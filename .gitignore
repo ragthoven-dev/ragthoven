@@ -2,3 +2,5 @@
 .pytest_cache
 test_output
 **__pycache__**
+.idea/
+.vscode/

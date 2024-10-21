@@ -15,7 +15,7 @@ from ragoon.executors.prompt_formatter import (
     BasePromptFormatter,
 )
 from ragoon.executors.reranker import BaseReranker, FlashRanker
-from ragoon.models.base import Config
+from ragoon.models.base import Config, EmbedderType
 from ragoon.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
@@ -61,7 +61,7 @@ class Ragoon:
         # Embedding texts into db
         self.embedder = None
         if embedder is None and self.config.embed is not None:
-            if self.config.embed.model == "jxm/cde-small-v1":
+            if self.config.embed.embedder == EmbedderType.CDE_EMBEDDER.value:
                 self.embedder = CDEEmbedder(self.config)
             else:
                 self.embedder = ChromaEmbedder(self.config)

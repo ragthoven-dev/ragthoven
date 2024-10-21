@@ -1,10 +1,9 @@
 import abc
-import random
-import string
 
 from datasets import Dataset
 
 from ragoon.models.base import Config
+from ragoon.utils import chromadb_normalize_name
 
 
 class BaseEmbedder(metaclass=abc.ABCMeta):
@@ -36,13 +35,8 @@ class ChromaEmbedder(BaseEmbedder):
         )
 
         self.collection = self.chroma_client.create_collection(
-            name=self.normalize_name(config.name), embedding_function=self.em_fn
+            name=chromadb_normalize_name(config.name), embedding_function=self.em_fn
         )
-
-    def normalize_name(self, collection_name: str):
-        return collection_name.lower().replace(" ", "-").replace("/", "-").replace(
-            ":", "-"
-        )[:32] + "".join(random.choices(string.ascii_letters, k=5))
 
     def set_training_dataset(self, training_dataset: Dataset):
         self.train_dataset = training_dataset
