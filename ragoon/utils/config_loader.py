@@ -1,7 +1,15 @@
 import yaml
 
-from ragoon.models.base import (LLM, Config, Embed, Prompt, Rerank, Results,
-                                TrainingData, ValidationData)
+from ragoon.models.base import (
+    LLM,
+    Config,
+    Embed,
+    Prompt,
+    Rerank,
+    Results,
+    TrainingData,
+    ValidationData,
+)
 
 
 def load_config(config_path: str) -> Config:

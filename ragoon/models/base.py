@@ -1,5 +1,11 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
+
+
+class EmbedderType(Enum):
+    DEFAULT_CHROMA_EMBEDDER = "sbert"
+    CDE_EMBEDDER = "cde"
 
 
 @dataclass
@@ -49,6 +55,13 @@ class Embed:
     model: Optional[str] | Optional[list[str]] = (
         "sentence-transformers/all-MiniLM-L6-v2"
     )
+    embedder: Optional[str] = EmbedderType.DEFAULT_CHROMA_EMBEDDER.value
+    docs_embedding_count: Optional[int] = 10
+
+    def __post_init__(self):
+        valid_options = [e.value for e in EmbedderType]
+        if self.embedder not in valid_options:
+            raise ValueError(f"Wrong embedder specified {self.embedder}, valid options: {valid_options}")
 
 
 @dataclass

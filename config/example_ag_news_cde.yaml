@@ -1,0 +1,37 @@
+name: "AG news cde"
+training_data:
+  dataset: "fancyzhx/ag_news"
+  input_feature: "text"
+  label_feature: "label"
+  split_name: "train"
+  textual_labels: ["World", "Sports", "Business", "Sci/Tech"]
+validation_data:
+  input_feature: "text"
+  split_name: "test"
+results:
+  output_cached: true
+  output_filename: "example_ag_news_cde_results"
+embed:
+  k: 10
+  training_size_limit: 10
+  model: "jxm/cde-small-v1"
+  docs_embedding_count: 512
+  embedder: "cde"
+rerank:
+  k: 3
+llm:
+  model: "azure/gpt-4o"
+  sprompt: |
+    You are a journalist. You would like to categorise each of the articles
+    by it's headline. There are these 4 categories you can choose from:
+    - World - news about world, general news
+    - Sports - news about sports and related stuff
+    - Business - news from business world
+    - Sci/Tech - news about new science and technology
+    As a busy journalist please answer with single world:
+
+    Here are some of the headlines you labeled:
+    {{ examples }}
+  uprompt: |
+    Please determine the category of the article based of this heading:
+    {{ text }}

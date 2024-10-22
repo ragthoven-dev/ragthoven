@@ -7,8 +7,11 @@ from rich import print
 from typing_extensions import Annotated
 
 from ragoon import Ragoon
-from ragoon.executors.output_writer import (CSVOutputWriter, JSONLOutputWriter,
-                                            SupportedOutputFormats)
+from ragoon.executors.output_writer import (
+    CSVOutputWriter,
+    JSONLOutputWriter,
+    SupportedOutputFormats,
+)
 from ragoon.models.base import Config
 from ragoon.models.iter_matrix import IterationMatrix
 from ragoon.utils import stringify_obj, stringify_obj_beautiful

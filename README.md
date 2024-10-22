@@ -224,12 +224,17 @@ A full example can be seen below:
     k: 20
     training_size_limit: 20
     model: "sentence-transformers/all-MiniLM-L6-v2"
+    embedder: "sbert"
+    docs_embedding_count: 512
   ```
 
 - In order to obtain high performance on the retrieved results, it is often a good idea to rerank them and select only the most relevant ones. This is done in cross encoder fashion. When reranking is not used, omit this configuration entry completely (see `ragoon/config/comp_case2024-climate_matrix_no_rerank.yaml`)
   - `k` - select only top-`k` reranked from retrieved samples. *Matrixable*, specify `k`s in an array.
+  - `training_size_limit` - limits number of documents used for retrieval. First number of documents is used.
   - `model` - (Optional) choose model for reranking. Basic reranker utilizes [FlashRank](https://github.com/PrithivirajDamodaran/FlashRank/), which you can consult for more details on available models. *Matrixable*, specify models in an array.
 A full example can be seen below:
+  - `embedder` - currently there are two embedding methods available, `sbert` which utilizes `sentence-transformers` models supported by `Chromadb` and `cde` which can use `Contextual Document Embeddings (CDE)` models, eg. `jxm/cde-small-v1`. In both cases `chromadb` is used as vector database.
+  - `docs_embedding_count` - used only in `cde` mode. Number of documents to use for creating dataset embeddings. Randomly sampled. See [https://huggingface.co/jxm/cde-small-v1](https://huggingface.co/jxm/cde-small-v1) for more information. When `docs_embedding_count` > `training_size_limit` then `docs_embedding_count` = `training_size_limit`. 
 
   ```yaml
   rerank:

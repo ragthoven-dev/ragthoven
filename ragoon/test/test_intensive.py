@@ -4,8 +4,7 @@ import pytest
 from dotenv import load_dotenv
 
 from ragoon import Ragoon
-from ragoon.executors.output_writer import (JSONLOutputWriter,
-                                            SupportedOutputFormats)
+from ragoon.executors.output_writer import JSONLOutputWriter, SupportedOutputFormats
 from ragoon.models.base import Config
 from ragoon.models.iter_matrix import IterationMatrix
 from ragoon.utils import stringify_obj, stringify_obj_beautiful
