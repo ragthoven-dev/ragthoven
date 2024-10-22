@@ -59,8 +59,9 @@ class Embed:
     docs_embedding_count: Optional[int] = 10
 
     def __post_init__(self):
-        if self.embedder not in [e.value for e in EmbedderType]:
-            raise ValueError("Wrong embedder specified")
+        valid_options = [e.value for e in EmbedderType]
+        if self.embedder not in valid_options:
+            raise ValueError(f"Wrong embedder specified {self.embedder}, valid options: {valid_options}")
 
 
 @dataclass

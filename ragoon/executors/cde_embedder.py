@@ -6,13 +6,14 @@ from ragoon.executors.embedder import BaseEmbedder
 from ragoon.models.base import Config
 from ragoon.utils import chromadb_normalize_name
 
+import chromadb
+from sentence_transformers import SentenceTransformer
+
 
 class CDEEmbedder(BaseEmbedder):
     def __init__(self, config: Config):
-        import chromadb
-        from sentence_transformers import SentenceTransformer
 
-        self.model = SentenceTransformer("jxm/cde-small-v1", trust_remote_code=True)
+        self.model = SentenceTransformer(config.embed.model, trust_remote_code=True)
         self.embedding_limit = config.embed.training_size_limit
         self.input_feature = config.training_data.input_feature
         self.docs_embedding_count = config.embed.docs_embedding_count
