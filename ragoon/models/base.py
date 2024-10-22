@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class EmbedderType(Enum):
-    DEFAULT_CHROMA_EMBEDDER = "chroma"
+    DEFAULT_CHROMA_EMBEDDER = "sbert"
     CDE_EMBEDDER = "cde"
 
 

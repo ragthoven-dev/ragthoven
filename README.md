@@ -224,7 +224,7 @@ A full example can be seen below:
     k: 20
     training_size_limit: 20
     model: "sentence-transformers/all-MiniLM-L6-v2"
-    embedder: "chroma"
+    embedder: "sbert"
     docs_embedding_count: 512
   ```
 
@@ -233,8 +233,8 @@ A full example can be seen below:
   - `training_size_limit` - limits number of documents used for retrieval. First number of documents is used.
   - `model` - (Optional) choose model for reranking. Basic reranker utilizes [FlashRank](https://github.com/PrithivirajDamodaran/FlashRank/), which you can consult for more details on available models. *Matrixable*, specify models in an array.
 A full example can be seen below:
-  - `embedder` - currently there are two embedding methods available, `chroma` which utilizes `Chromadb` and models it supports and `cde` which can use `Contextual Document Embeddings (CDE)` models, eg. `jxm/cde-small-v1`
-  - `docs_embedding_count` - used only in `cde` mode. Number of documents to use for creating dataset embeddings. See [https://huggingface.co/jxm/cde-small-v1](https://huggingface.co/jxm/cde-small-v1) for more information. 
+  - `embedder` - currently there are two embedding methods available, `sbert` which utilizes `sentence-transformers` models supported by `Chromadb` and `cde` which can use `Contextual Document Embeddings (CDE)` models, eg. `jxm/cde-small-v1`. In both cases `chromadb` is used as vector database.
+  - `docs_embedding_count` - used only in `cde` mode. Number of documents to use for creating dataset embeddings. Randomly sampled. See [https://huggingface.co/jxm/cde-small-v1](https://huggingface.co/jxm/cde-small-v1) for more information. When `docs_embedding_count` > `training_size_limit` then `docs_embedding_count` = `training_size_limit`. 
 
   ```yaml
   rerank:
