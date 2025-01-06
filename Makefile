@@ -1,19 +1,19 @@
 format:
 	isort . && \
-	black ragoon/ && \
+	black ragthoven/ && \
 	black main.py
 
 test-fast:
 	mkdir -p test_output && \
-	PYTHONPATH=ragoon && \
-	pytest ragoon/test -k "test_example" && \
+	PYTHONPATH=ragthoven && \
+	pytest ragthoven/test -k "test_example" && \
 	mv example_*_results.jsonl test_output/ && \
 	mv example_*_results.csv test_output/
 
 test-intensive:
 	mkdir -p test_output && \
-	PYTHONPATH=ragoon && \
-	pytest ragoon/test -k "test_intensive" && \
+	PYTHONPATH=ragthoven && \
+	pytest ragthoven/test -k "test_intensive" && \
 	mv results.*.json test_output/ && \
 	mv results.*.jsonl test_output/
 

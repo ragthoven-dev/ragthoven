@@ -3,7 +3,7 @@ import os
 
 import litellm
 
-from ragoon.models.base import Config
+from ragthoven.models.base import Config
 
 
 class BasePromptExecutor(metaclass=abc.ABCMeta):

@@ -1,6 +1,6 @@
 import abc
 
-from ragoon.models.base import Config
+from ragthoven.models.base import Config
 
 
 class BaseReranker(metaclass=abc.ABCMeta):

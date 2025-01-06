@@ -1,9 +1,9 @@
 from copy import deepcopy
 from enum import Enum
 
-from ragoon.models.base import Config
-from ragoon.utils import to_dict
-from ragoon.utils.config_loader import process_config
+from ragthoven.models.base import Config
+from ragthoven.utils import to_dict
+from ragthoven.utils.config_loader import process_config
 
 
 class IterParam(Enum):

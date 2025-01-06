@@ -4,7 +4,7 @@ import json
 import os
 from enum import Enum
 
-from ragoon.models.base import Config
+from ragthoven.models.base import Config
 
 
 class SupportedOutputFormats(str, Enum):

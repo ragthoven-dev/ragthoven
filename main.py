@@ -6,16 +6,16 @@ from dotenv import load_dotenv
 from rich import print
 from typing_extensions import Annotated
 
-from ragoon import Ragoon
-from ragoon.executors.output_writer import (
+from ragthoven import Ragthoven
+from ragthoven.executors.output_writer import (
     CSVOutputWriter,
     JSONLOutputWriter,
     SupportedOutputFormats,
 )
-from ragoon.models.base import Config
-from ragoon.models.iter_matrix import IterationMatrix
-from ragoon.utils import stringify_obj, stringify_obj_beautiful
-from ragoon.utils.config_loader import load_config
+from ragthoven.models.base import Config
+from ragthoven.models.iter_matrix import IterationMatrix
+from ragthoven.utils import stringify_obj, stringify_obj_beautiful
+from ragthoven.utils.config_loader import load_config
 
 app = typer.Typer()
 
@@ -67,7 +67,7 @@ def rag(
             )
             output_writer = JSONLOutputWriter(filename, current_config)
 
-        r = Ragoon(current_config, output_write=output_writer)
+        r = ragthoven(current_config, output_write=output_writer)
         r.execute()
         cont = iter_matrix.inc()
 

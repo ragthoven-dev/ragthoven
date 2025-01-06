@@ -1,6 +1,6 @@
 import yaml
 
-from ragoon.models.base import (
+from ragthoven.models.base import (
     LLM,
     Config,
     Embed,

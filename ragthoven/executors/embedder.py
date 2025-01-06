@@ -2,8 +2,8 @@ import abc
 
 from datasets import Dataset
 
-from ragoon.models.base import Config
-from ragoon.utils import chromadb_normalize_name
+from ragthoven.models.base import Config
+from ragthoven.utils import chromadb_normalize_name
 
 
 class BaseEmbedder(metaclass=abc.ABCMeta):

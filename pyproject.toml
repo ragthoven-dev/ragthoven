@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "ragoon"
+name = "ragthoven"
 version = "0.1.0"
 description = ""
 authors = ["Gregor Karetka <gkaretka@cisco.com>"]
 readme = "README.md"
-packages = [{ include = "ragoon" }]
+packages = [{ include = "ragthoven" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -24,7 +24,7 @@ tqdm = "^4.66.5"
 einops = "^0.8.0"
 
 [tool.poetry.scripts]
-ragoon = "main:app"
+ragthoven = "main:app"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"

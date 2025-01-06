@@ -1,13 +1,12 @@
 import random
 
-from datasets import Dataset
-
-from ragoon.executors.embedder import BaseEmbedder
-from ragoon.models.base import Config
-from ragoon.utils import chromadb_normalize_name
-
 import chromadb
+from datasets import Dataset
 from sentence_transformers import SentenceTransformer
+
+from ragthoven.executors.embedder import BaseEmbedder
+from ragthoven.models.base import Config
+from ragthoven.utils import chromadb_normalize_name
 
 
 class CDEEmbedder(BaseEmbedder):
