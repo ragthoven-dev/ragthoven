@@ -61,7 +61,9 @@ class Embed:
     def __post_init__(self):
         valid_options = [e.value for e in EmbedderType]
         if self.embedder not in valid_options:
-            raise ValueError(f"Wrong embedder specified {self.embedder}, valid options: {valid_options}")
+            raise ValueError(
+                f"Wrong embedder specified {self.embedder}, valid options: {valid_options}"
+            )
 
 
 @dataclass

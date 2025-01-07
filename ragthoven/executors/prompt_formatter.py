@@ -2,9 +2,9 @@ import abc
 
 from datasets import Dataset
 
-from ragoon.executors.embedder import BaseEmbedder
-from ragoon.executors.reranker import BaseReranker
-from ragoon.models.base import Config, Prompt
+from ragthoven.executors.embedder import BaseEmbedder
+from ragthoven.executors.reranker import BaseReranker
+from ragthoven.models.base import Config, Prompt
 
 
 class BasePromptFormatter(metaclass=abc.ABCMeta):

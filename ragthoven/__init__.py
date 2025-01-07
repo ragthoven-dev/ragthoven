@@ -2,28 +2,31 @@ import logging
 
 import tqdm
 
-from ragoon.executors.cde_embedder import CDEEmbedder
-from ragoon.executors.embedder import BaseEmbedder, ChromaEmbedder
-from ragoon.executors.output_writer import (
+from ragthoven.executors.cde_embedder import CDEEmbedder
+from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
+from ragthoven.executors.output_writer import (
     BaseOutputWriter,
     JSONLOutputWriter,
     SupportedOutputFormats,
 )
-from ragoon.executors.prompt_executor import BasePromptExecutor, LiteLLMPromptExecutor
-from ragoon.executors.prompt_formatter import (
+from ragthoven.executors.prompt_executor import (
+    BasePromptExecutor,
+    LiteLLMPromptExecutor,
+)
+from ragthoven.executors.prompt_formatter import (
     BaseExamplePromptFormatter,
     BasePromptFormatter,
 )
-from ragoon.executors.reranker import BaseReranker, FlashRanker
-from ragoon.models.base import Config, EmbedderType
-from ragoon.utils.dataset_loader import dataset_load
+from ragthoven.executors.reranker import BaseReranker, FlashRanker
+from ragthoven.models.base import Config, EmbedderType
+from ragthoven.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
 logger.propagate = False
 logger.setLevel(logging.ERROR)
 
 
-class Ragoon:
+class Ragthoven:
     def __init__(
         self,
         config: Config,
