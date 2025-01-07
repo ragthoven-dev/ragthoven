@@ -67,7 +67,7 @@ def rag(
             )
             output_writer = JSONLOutputWriter(filename, current_config)
 
-        r = ragthoven(current_config, output_write=output_writer)
+        r = Ragthoven(current_config, output_write=output_writer)
         r.execute()
         cont = iter_matrix.inc()
 
