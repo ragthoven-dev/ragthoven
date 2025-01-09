@@ -1,10 +1,6 @@
 
 <div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="images/ragthoven-light.png">
-    <source media="(prefers-color-scheme: dark)" srcset="images/ragthoven-dark.png">
-    <img alt="RAGthoven logo" src="images/ragthoven-dark.png">
-  </picture>
+  <img alt="RAGthoven logo" src="images/ragthoven.png">
 </div>
 
 <br />
