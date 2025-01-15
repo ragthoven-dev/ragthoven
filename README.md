@@ -40,8 +40,7 @@ Features:
 - ...and more!
 
 ## Demo
-
-https://github.com/user-attachments/assets/3e086bac-d2fb-4d9b-8f1b-57dc1bab9ff8
+https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
 
 ## How to get started
 
