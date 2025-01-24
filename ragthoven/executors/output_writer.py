@@ -34,7 +34,7 @@ class JSONLOutputWriter(BaseOutputWriter):
         self.config = config
         self.processed_ids = set()
         if self.config.results.output_cached == True and os.path.exists(path):
-            with open(path, "r") as already_processed:
+            with open(path, "r", encoding="utf-8") as already_processed:
                 for line in already_processed.readlines():
                     processed_id = json.loads(line)[
                         (
@@ -44,9 +44,9 @@ class JSONLOutputWriter(BaseOutputWriter):
                         )
                     ]
                     self.processed_ids.add(processed_id)
-            self.results_file = open(path, "a")
+            self.results_file = open(path, "a", encoding="utf-8")
         else:
-            self.results_file = open(path, "w")
+            self.results_file = open(path, "w", encoding="utf-8")
 
     def get_processed_ids(self):
         return self.processed_ids
@@ -60,7 +60,7 @@ class JSONLOutputWriter(BaseOutputWriter):
                 else self.config.results.output_cache_id
             ): id,
         }
-        self.results_file.write(json.dumps(data) + "\n")
+        self.results_file.write(json.dumps(data, ensure_ascii=False) + "\n")
 
     def close(self):
         self.results_file.close()
