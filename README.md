@@ -322,7 +322,7 @@ An example of the **single prompt** version of the configuration.
   ```
 
 
-# Tests
+## Tests
 
 In order to run tests:
 
@@ -335,9 +335,9 @@ In order to run tests:
     make test
     ```
 
-# Tutorials
+## Tutorials
 
-## News headlines classification
+### News headlines classification
 This is a tutorial about how to use RAGthoven to classify News headlines into categories.
 
 1. First, follow the instructions in [Prepare the repository](#prepare-the-repository) section. This takes care of installing the relevant dependencies, activating the virtual env, and preparing a `.env` file with the relevant env variables needed to interact with the LLM API of your choice.
@@ -363,7 +363,38 @@ This is a tutorial about how to use RAGthoven to classify News headlines into ca
 
 1. RAGthoven should have created 2 output files. The names of both those files have the prefix `example_ag_news_results`. One of the files has the suffix `.metadata.json` and it is a metadata file that contains all the parameters used for that RAG pipeline run. The second file has the suffix `.jsonl` and contains the output of the classification task for some of the validation dataset examples.
 
-# License
+## License
 
 RAGthoven is licensed under the terms of the MIT license.
 
+## Paper & Citation
+
+You can find more info on RAGthoven, as well as a few case studies, in the associated paper: https://aclanthology.org/2025.coling-demos.12/
+
+If you found RAGthoven helpful in your work, please consider citing it:
+
+```
+@inproceedings{karetka-etal-2025-ragthoven,
+    title = "{RAG}thoven: A Configurable Toolkit for {RAG}-enabled {LLM} Experimentation",
+    author = "Karetka, Gregor  and
+      Skottis, Demetris  and
+      Dutkov{\'a}, Lucia  and
+      Hra{\v{s}}ka, Peter  and
+      Suppa, Marek",
+    editor = "Rambow, Owen  and
+      Wanner, Leo  and
+      Apidianaki, Marianna  and
+      Al-Khalifa, Hend  and
+      Eugenio, Barbara Di  and
+      Schockaert, Steven  and
+      Mather, Brodie  and
+      Dras, Mark",
+    booktitle = "Proceedings of the 31st International Conference on Computational Linguistics: System Demonstrations",
+    month = jan,
+    year = "2025",
+    address = "Abu Dhabi, UAE",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.coling-demos.12/",
+    pages = "117--125"
+}
+```
