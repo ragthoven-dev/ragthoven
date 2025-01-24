@@ -36,6 +36,7 @@ class ValidationData:
     dataset: Optional[str] = (
         None  # this might look like the example: "json:data/data.jsonl"
     )
+    dataset_version: Optional[str] = None
 
 
 @dataclass
@@ -94,7 +95,7 @@ class LLM:
 @dataclass
 class Config:
     name: str
-    training_data: TrainingData
+    training_data: TrainingData | None
     validation_data: ValidationData
     results: Results
     embed: Embed | None

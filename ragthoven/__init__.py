@@ -40,11 +40,18 @@ class Ragthoven:
         self.train_dataset = None
         self.validation_dataset = None
 
-        self.train_dataset = dataset_load(
-            self.config.training_data.dataset,
-            self.config.training_data.dataset_version,
-            split=self.config.training_data.split_name,
-        )
+        self.train_dataset = None
+        if self.config.embed is not None:
+            if embedder is None and self.config.embed is None:
+                raise ValueError(
+                    "When using embedder the training dataset must be provided"
+                )
+
+            self.train_dataset = dataset_load(
+                self.config.training_data.dataset,
+                self.config.training_data.dataset_version,
+                split=self.config.training_data.split_name,
+            )
 
         if (
             self.config.validation_data.dataset is None
@@ -57,7 +64,11 @@ class Ragthoven:
         else:
             self.validation_dataset = dataset_load(
                 self.config.validation_data.dataset,
-                "",
+                (
+                    self.config.validation_data.dataset_version
+                    if self.config.validation_data.dataset_version is not None
+                    else ""
+                ),
                 split=self.config.validation_data.split_name,
             )
 

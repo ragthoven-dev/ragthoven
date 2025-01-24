@@ -109,3 +109,11 @@ def test_example_ag_news_alternative_models(setup_env):
     r = Ragthoven(config)
     r.validation_dataset = r.validation_dataset.select(range(2))
     r.execute()
+
+
+def test_config_single_shot_example(setup_end):
+    cfg_path = "ragthoven/test/test_config/single-shot-example.yaml"
+    config = load_config(cfg_path)
+    r = Ragthoven(config)
+    r.validation_dataset = r.validation_dataset.select(range(2))
+    r.execute()

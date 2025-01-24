@@ -20,7 +20,11 @@ def load_config(config_path: str) -> Config:
 
 def process_config(config_dict: dict):
     # read nested keys
-    config_dict["training_data"] = TrainingData(**config_dict["training_data"])
+    config_dict["training_data"] = (
+        TrainingData(**config_dict["training_data"])
+        if config_dict.get("training_data") is not None
+        else None
+    )
     config_dict["validation_data"] = ValidationData(**config_dict["validation_data"])
     config_dict["embed"] = (
         Embed(**config_dict["embed"]) if config_dict.get("embed") is not None else None
