@@ -1,12 +1,5 @@
 name: "Shared task on Climate Activism Stance and Hate Event Detection at CASE 2024"
 
-training_data:
-  dataset: "csv:./data/SubTask-A-train.csv"
-  input_feature: "tweet"
-  label_feature: "label"
-  split_name: "train"
-  textual_labels: ["No hatespeech", "Hate speech"]
-
 validation_data:
   input_feature: "tweet"
   split_name: "train"

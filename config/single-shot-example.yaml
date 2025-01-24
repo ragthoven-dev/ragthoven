@@ -1,0 +1,21 @@
+name: "Entity detection"
+
+validation_data:
+  dataset: "abisee/cnn_dailymail"
+  input_feature: "article"
+  split_name: "validation"
+  dataset_version: "1.0.0"
+
+results:
+  output_cached: true
+  bad_request_default_value: -1
+  output_cache_id: "id"
+
+llm:
+  model: "azure/gpt-4o"
+  temperature: 0
+  sprompt: |
+    You are the best in the world to do summarizations. Please, when given a text, do the best to summarize it.
+  uprompt: |
+    Please summarize this text:
+    {{ data.article }}

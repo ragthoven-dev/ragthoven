@@ -20,10 +20,12 @@ def run_with_cfg(cfg_path: str):
     config = load_config(cfg_path)
 
     # Mocking the data
-    config.training_data.dataset = config.training_data.dataset.replace(
-        "csv:./data/", "csv:./ragthoven/test/test_data/"
-    )
-    config.validation_data.dataset = config.training_data.dataset.replace(
+    if config.training_data is not None:
+        config.training_data.dataset = config.training_data.dataset.replace(
+            "csv:./data/", "csv:./ragthoven/test/test_data/"
+        )
+
+    config.validation_data.dataset = config.validation_data.dataset.replace(
         "csv:./data/", "csv:./ragthoven/test/test_data/"
     )
     iter_matrix = IterationMatrix(config)
@@ -48,7 +50,10 @@ def run_with_cfg(cfg_path: str):
         output_writer = JSONLOutputWriter(filename, current_config)
 
         r = Ragthoven(current_config, output_write=output_writer)
-        r.train_dataset = r.train_dataset.select(range(20))
+
+        if r.train_dataset is not None:
+            r.train_dataset = r.train_dataset.select(range(20))
+
         r.validation_dataset = r.validation_dataset.select(range(2))
         r.execute()
         cont = iter_matrix.inc()
@@ -94,3 +99,7 @@ def test_intensive_comp_case2024_climate_matrix(setup_env):
 
 def test_intensive_comp_case2024_climate(setup_env):
     run_with_cfg("ragthoven/test/test_config/comp_case2024-climate.yaml")
+
+
+def single_shot_only(setup_env):
+    run_with_cfg("ragthoven/test/test_config/single-shot-example.yaml")
