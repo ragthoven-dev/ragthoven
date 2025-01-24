@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: Please cite the following works when using this software.
+preferred-citation:
+  authors:
+    - family-names: Karetka
+      given-names: Gregor
+    - family-names: Skottis
+      given-names: Demetris
+    - family-names: Dutková
+      given-names: Lucia
+    - family-names: Hraška
+      given-names: Peter
+    - family-names: Suppa
+      given-names: Marek
+  identifiers:
+    - type: url
+      value: https://aclanthology.org/2025.coling-demos.12/
+  title: 'RAGthoven: A Configurable Toolkit for RAG-enabled LLM Experimentation'
+  url: https://aclanthology.org/2025.coling-demos.12/
+  date-published: 2025-01-01
+  year: 2025
+  month: 1
+  editors:
+    - family-names: Rambow
+      given-names: Owen
+    - family-names: Wanner
+      given-names: Leo
+    - family-names: Apidianaki
+      given-names: Marianna
+    - family-names: Al-Khalifa
+      given-names: Hend
+    - family-names: Eugenio
+      given-names: Barbara Di
+    - family-names: Schockaert
+      given-names: Steven
+    - family-names: Mather
+      given-names: Brodie
+    - family-names: Dras
+      given-names: Mark
+  journal: >-
+    Proceedings of the 31st International Conference on Computational
+    Linguistics: System Demonstrations
+  publisher:
+    name: Association for Computational Linguistics
+    country: UAE
+    city: Abu Dhabi
+  start: '117'
+  end: '125'
+  type: conference-paper
