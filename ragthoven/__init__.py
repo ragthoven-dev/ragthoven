@@ -42,7 +42,7 @@ class Ragthoven:
 
         self.train_dataset = None
         if self.config.embed is not None:
-            if embedder is None and self.config.embed is None:
+            if self.config.training_data is None:
                 raise ValueError(
                     "When using embedder the training dataset must be provided"
                 )
