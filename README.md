@@ -237,6 +237,13 @@ A full example can be seen below:
     model: "ms-marco-MiniLM-L-12-v2"
   ```
 
+- The RAGthoven provides a way to run custom python code on every validation data. Please refer to code [`ragthoven/tools/example_tool.py`](.ragthoven/tools/example_tool.py) on how to write a tool for RAGthoven preprocessing. In order to specify which tools to run, specify them in `yaml` config as follow. The tools are run sequentially.
+
+```yaml
+preprocessor:
+  entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
+```
+
 - At the hearth of RAGthoven, there is always a call to an LLM API, be it local or commercial.
   - `model` - which model to use. *Matrixable*, provide an array of models.
   - `temperature` - (Optional) - temperature for the models decoder. Defaults to `0`. *Matrixable*, provide array with temperature values.

@@ -4,6 +4,7 @@ from ragthoven.models.base import (
     LLM,
     Config,
     Embed,
+    Preprocessor,
     Prompt,
     Rerank,
     Results,
@@ -45,5 +46,11 @@ def process_config(config_dict: dict):
         config_dict["results"] = Results()
     else:
         config_dict["results"] = Results(**config_dict["results"])
+
+    config_dict["preprocessor"] = (
+        Preprocessor(**config_dict["preprocessor"])
+        if config_dict.get("preprocessor") is not None
+        else None
+    )
 
     return Config(**config_dict)

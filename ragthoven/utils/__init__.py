@@ -1,3 +1,4 @@
+import importlib
 import json
 import random
 import string
@@ -20,3 +21,16 @@ def chromadb_normalize_name(collection_name: str):
     return collection_name.lower().replace(" ", "-").replace("/", "-").replace(
         ":", "-"
     )[:32] + "".join(random.choices(string.ascii_letters, k=5))
+
+
+def get_func(module_name: str, func_name: str):
+    whole_hierarchy = func_name.split(".")
+
+    module_full_name = module_name
+    if len(whole_hierarchy) > 1:
+        for package in whole_hierarchy[0 : len(whole_hierarchy) - 1]:
+            module_full_name += "." + package
+
+    module = importlib.import_module(module_full_name)
+    func = getattr(module, whole_hierarchy[len(whole_hierarchy) - 1])
+    return func

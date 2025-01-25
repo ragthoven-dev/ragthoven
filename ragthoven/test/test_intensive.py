@@ -103,3 +103,7 @@ def test_intensive_comp_case2024_climate(setup_env):
 
 def single_shot_only(setup_env):
     run_with_cfg("ragthoven/test/test_config/single-shot-example.yaml")
+
+
+def single_shot_only(setup_env):
+    run_with_cfg("ragthoven/test/test_config/single-shot-example-preprocessor.yaml")
