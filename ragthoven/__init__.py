@@ -95,6 +95,8 @@ class Ragthoven:
         self.data_preprocessor = None
         if data_preprocessor is None and self.config.preprocessor is not None:
             self.data_preprocessor = DataPreprocessor(self.config.preprocessor)
+        else:
+            self.data_preprocessor = data_preprocessor
 
         # Prompt formatter
         if prompt_formatter is None:

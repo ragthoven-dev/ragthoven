@@ -12,7 +12,7 @@ results:
   output_cache_id: "id"
 
 preprocessor:
-  entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
+  entries: ["example_tool.fizzbuzz", "example_tool.replace_text_with_length", "example_tool.count_ands"]
 
 llm:
   model: "azure/gpt-4o"
