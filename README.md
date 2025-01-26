@@ -237,7 +237,9 @@ A full example can be seen below:
     model: "ms-marco-MiniLM-L-12-v2"
   ```
 
-- The RAGthoven provides a way to run custom python code on every validation data. Please refer to code [`ragthoven/tools/example_tool.py`](.ragthoven/tools/example_tool.py) on how to write a tool for RAGthoven preprocessing. In order to specify which tools to run, specify them in `yaml` config as follow. The tools are run sequentially.
+- The RAGthoven provides a way to run custom python code on every validation data. Please refer to code [`ragthoven/tools/example_tool.py`](.ragthoven/tools/example_tool.py) on how to write a tool for RAGthoven preprocessing. In order to specify which tools to run, specify them in `yaml` config as follows: 
+
+(Note that the tools are run sequentially, in the order of appearance in the `entries` key of the YAML config.)
 
 ```yaml
 preprocessor:
