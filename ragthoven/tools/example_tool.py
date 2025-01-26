@@ -4,8 +4,7 @@ Every tool is a function that takes the data row in form of dictionary in a vari
 - The tools are called sequentially as specified in yaml config.
 """
 
-
-def fizzbuzz(args):
+def fizzbuzz(args: dict[str, any]):
     text = str(args["article"])
     n_of_spaces = text.count(" ")
     args["fizzbuzz"] = (
@@ -16,13 +15,13 @@ def fizzbuzz(args):
     return args
 
 
-def count_ands(args):
+def count_ands(args: dict[str, any]):
     text = str(args["article"])
     args["and_countes"] = text.count("and")
     return args
 
 
-def replace_text_with_length(args):
+def replace_text_with_length(args: dict[str, any]):
     text_length = len(str(args["article"]))
     args["article"] = text_length
     return args
