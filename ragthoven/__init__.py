@@ -9,6 +9,7 @@ from ragthoven.executors.output_writer import (
     JSONLOutputWriter,
     SupportedOutputFormats,
 )
+from ragthoven.executors.preprocessor import BaseDataPreprocessor, DataPreprocessor
 from ragthoven.executors.prompt_executor import (
     BasePromptExecutor,
     LiteLLMPromptExecutor,
@@ -34,6 +35,7 @@ class Ragthoven:
         reranker: BaseReranker | None = None,
         prompt_formatter: BasePromptFormatter | None = None,
         prompt_executor: BasePromptExecutor | None = None,
+        data_preprocessor: BaseDataPreprocessor | None = None,
         output_write: BaseOutputWriter | None = None,
     ):
         self.config = config
@@ -89,6 +91,14 @@ class Ragthoven:
         else:
             self.reranker = reranker
 
+        # Data preprocessor
+        self.data_preprocessor = None
+        if data_preprocessor is None and self.config.preprocessor is not None:
+            self.data_preprocessor = DataPreprocessor(self.config.preprocessor)
+        else:
+            self.data_preprocessor = data_preprocessor
+
+        # Prompt formatter
         if prompt_formatter is None:
             self.pformater = BaseExamplePromptFormatter(self.config)
         else:
@@ -111,6 +121,7 @@ class Ragthoven:
         else:
             self.pexecutor = prompt_executor
 
+        # Output Writer
         if output_write is None:
             output_file = (
                 self.config.results.output_filename
@@ -146,6 +157,9 @@ class Ragthoven:
                 key: self.validation_dataset[key][i]
                 for key in self.validation_dataset.features.keys()
             }
+
+            if self.data_preprocessor is not None:
+                all_features = self.data_preprocessor.preprocess(all_features)
 
             if self.config.llm.prompts is not None:
                 named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}

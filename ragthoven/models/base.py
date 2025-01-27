@@ -82,6 +82,11 @@ class Prompt:
 
 
 @dataclass
+class Preprocessor:
+    entries: list[str]
+
+
+@dataclass
 class LLM:
     sprompt: Optional[str | list[str]] = None
     uprompt: Optional[str | list[str]] = None
@@ -101,3 +106,4 @@ class Config:
     embed: Embed | None
     rerank: Rerank | None
     llm: LLM
+    preprocessor: Preprocessor | None

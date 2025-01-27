@@ -5,3 +5,5 @@ test_output
 .idea/
 .vscode/
 data
+.gitmodules
+tools/**
