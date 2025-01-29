@@ -1,0 +1,50 @@
+name: "Entity detection"
+
+validation_data:
+  dataset: "stanfordnlp/imdb"
+  input_feature: "text"
+  split_name: "test"
+
+results:
+  output_cached: true
+  bad_request_default_value: -1
+
+llm:
+  log_first: true
+  model: "azure/gpt-4o"
+  temperature: 0
+  tools: ["example_fun_calling.WikipediaPageSearch", "example_fun_calling.WikipediaPageSummary"]
+  prompts:
+    -
+      name: "system"
+      role: "system"
+      prompt:
+        You are the best at knowing the sentiment of a piece of text. You will be given piecies of text, please say whether these are negative or positive reviews.
+    -
+      name: "wikipedia_search"
+      role: "user"
+      tools: ["WikipediaPageSearch"]
+      prompt: |
+        First, let's have a look at wikipedia page about this movie. This is the text of the review:
+        {{ data.text }}
+
+        Please first find some usefull information online about this movie.
+    -
+      name: "wikipedia_summary"
+      role: "user"
+      tools: ["WikipediaPageSummary"]
+      prompt: |
+        Now, you have obtained following list of results for your search:
+        {{ wikipedia_search.out }}
+        Please obtain a summary of this movie.
+    -
+      name: "verdict"
+      role: "user"
+      prompt: |
+        Give that the summary of the movie is this:
+        {{ wikipedia_summary.out }}
+
+        And the review is this:
+        {{ data.text }}
+
+        Is the review for the film negative or positive? Respon only with a single word (neg or pos).

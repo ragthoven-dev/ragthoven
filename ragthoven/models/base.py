@@ -79,6 +79,7 @@ class Prompt:
     role: str
     prompt: str
     out: Optional[str] = None
+    tools: Optional[list[str]] = None
 
 
 @dataclass
@@ -88,9 +89,11 @@ class Preprocessor:
 
 @dataclass
 class LLM:
+    log_first: Optional[bool] = False
     sprompt: Optional[str | list[str]] = None
     uprompt: Optional[str | list[str]] = None
     prompts: Optional[list[Prompt]] = None
+    tools: Optional[list[str]] = None
     examples: Optional[str] = None
     model: Optional[str] | list[str] = "gpt-4o"
     base_url: Optional[str] = None

@@ -246,6 +246,38 @@ preprocessor:
   entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
 ```
 
+- The RAGthoven provides a way to run a function calling. Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write a function calling prompts and how to write functions for function calling. In order to use function calling, please use multiprompt (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
+
+```yaml
+llm:
+  ...
+  tools: ["example_fun_calling.WikipediaPageSearch", "example_fun_calling.WikipediaPageSummary"]
+  prompts:
+    -
+      name: "system"
+      role: "system"
+      prompt:
+        You are the best at knowing ...
+    -
+      name: "wikipedia_search"
+      role: "user"
+      tools: ["WikipediaPageSearch"]
+      prompt: |
+        First, let's have a look at wikipedia page about this movie. This is the text of the review:
+        {{ data.text }}
+
+        Please first find some usefull information online about this movie.
+    -
+      name: "wikipedia_summary"
+      role: "user"
+      tools: ["WikipediaPageSummary"]
+      prompt: |
+        Now, you have obtained following list of results for your search:
+        {{ wikipedia_search.out }}
+        Please obtain a summary of this movie.
+    ...
+```
+
 - At the hearth of RAGthoven, there is always a call to an LLM API, be it local or commercial.
   - `model` - which model to use. *Matrixable*, provide an array of models.
   - `temperature` - (Optional) - temperature for the models decoder. Defaults to `0`. *Matrixable*, provide array with temperature values.

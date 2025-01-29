@@ -176,7 +176,13 @@ class Ragthoven:
                         self.reranker,
                         self.config,
                     )
-                    pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+                    pres = self.pexecutor.get_prompt_results(
+                        sprompt, uprompt, prompt.tools
+                    )
+
+                    if i == 0 and self.config.llm.log_first:
+                        print(f"Logging on first data: {sprompt}, {uprompt}, {pres}")
+
                     named_prompts_with_output[prompt.name].out = pres
                 self.output_write.append(pres, id)
 
@@ -185,5 +191,8 @@ class Ragthoven:
                     text, all_features, self.embedder, self.reranker, self.config
                 )
                 pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+                if i == 0 and self.config.llm.log_first:
+                    print(f"Logging on first data: {sprompt}, {uprompt}, {pres}")
                 self.output_write.append(pres, id)
+
         self.output_write.close()
