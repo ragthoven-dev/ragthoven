@@ -1,7 +1,10 @@
+import json
 import logging
 
+import litellm
 import tqdm
 
+from ragthoven.constants import PROMPT_LOGGING
 from ragthoven.executors.cde_embedder import CDEEmbedder
 from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
 from ragthoven.executors.output_writer import (
@@ -135,6 +138,113 @@ class Ragthoven:
         else:
             self.output_write = output_write
 
+    
+
+    def execute_single_prompt(self, i, text, all_features):
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+        sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
+        pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+        if i == 0 and self.config.llm.log_first:
+            print(PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres))
+        return pres
+
+    def execute_messages_prompts(self, j, text, all_features):
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+        prompts = self.config.llm.prompts
+        system_prompt = prompts[0]
+
+        if system_prompt.name != "system" or system_prompt.role != "system":
+            raise ValueError("First prompt is not a system prompt")
+
+        messages = [
+            {
+                "role": system_prompt.role,
+                "content": self.pformater.format_prompt(
+                    text, all_features, system_prompt.name, examples
+                ),
+            },
+        ]
+
+        for i in range(1, len(prompts)):
+            messages.append(
+                {
+                    "role": prompts[i].role,
+                    "content": self.pformater.format_prompt(
+                        text, all_features, prompts[i].name, examples
+                    ),
+                }
+            )
+
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=prompts[i].tools
+            )
+            model_response = response.choices[0].message
+            tool_calls = (
+                model_response.tool_calls
+                if model_response.tool_calls is not None
+                else None
+            )
+            processed_tool_calls = self.pexecutor.get_all_function_calls(tool_calls)
+
+            if tool_calls:
+                messages.append(model_response)
+                for tool_call in processed_tool_calls:
+                    _, function_result, tool_call_id = tool_call
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "content": function_result,
+                        }
+                    )
+            else:
+                messages.append(
+                    {"role": "assistant", "content": model_response.content}
+                )
+
+        if j == 0 and self.config.llm.log_first:
+            debug_messages = []
+            for message in messages:
+                if type(message) is not dict:
+                    debug_messages.append(
+                        {
+                            "role": "assistant",
+                            "tool_calls": message.tool_calls[0].function.name,
+                            "arguments": message.tool_calls[0].function.arguments,
+                        }
+                    )
+                else:
+                    debug_messages.append(message)
+            print(json.dumps(debug_messages, indent=2))
+
+        return model_response.content
+
+    def execute_sequential_prompts(self, i, text, all_features):
+        named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+
+        for prompt in self.config.llm.prompts:
+            if prompt.name == "system":
+                continue
+            sprompt, uprompt = self.pformater.format_multiple(
+                text, all_features, prompt.name, named_prompts_with_output, examples
+            )
+            pres = self.pexecutor.get_prompt_results(sprompt, uprompt, prompt.tools)
+
+            if i == 0 and self.config.llm.log_first:
+                print(
+                    PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres)
+                )
+            named_prompts_with_output[prompt.name].out = pres
+
+        return pres
+
     def process_validation_example(self, index, processed_ids):
         if self.config.results.output_cache_id is not None:
             example_id = self.validation_dataset[self.config.results.output_cache_id][index]
@@ -153,33 +263,17 @@ class Ragthoven:
         if self.data_preprocessor is not None:
             all_features = self.data_preprocessor.preprocess(all_features)
 
+        pres = None
         if self.config.llm.prompts is not None:
-            named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
-            for prompt in self.config.llm.prompts:
-                if prompt.name == "system":
-                    continue
-
-                sprompt, uprompt = self.pformater.format_multiple(
-                    text,
-                    all_features,
-                    prompt.name,
-                    named_prompts_with_output,
-                    self.embedder,
-                    self.reranker,
-                    self.config,
-                )
-                pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
-                named_prompts_with_output[prompt.name].out = pres
-            
-            return (pres, example_id)
-
+            use_messages = self.config.llm.messages
+            if use_messages:
+                pres = self.execute_messages_prompts(index, text, all_features)
+            else:
+                pres = self.execute_sequential_prompts(index, text, all_features)
         else:
-            sprompt, uprompt = self.pformater.format_simple(
-                text, all_features, self.embedder, self.reranker, self.config
-            )
-            pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+            pres = self.execute_single_prompt(index, text, all_features)
             
-            return (pres, example_id)
+        return (pres, example_id)
         
     def process_batch_parallel(self, start_index, end_index, processed_ids, max_workers=20):
         '''

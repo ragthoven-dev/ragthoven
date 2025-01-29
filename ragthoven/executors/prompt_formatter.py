@@ -110,17 +110,19 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
             self.examples_cache_id = text
             return self.examples_cache
 
+    def format_prompt(self, text, all_features, prompt_id, examples):
+        return self.prompt_templates[prompt_id].render(
+            examples=examples, text=text, data=all_features
+        )
+
     def format_multiple(
         self,
         text: str,
         all_features: dict[str, any],
         prompt_id: str,
         prev_prompt_out_states: dict[str, Prompt],
-        embedder: BaseEmbedder,
-        reranker: BaseReranker,
-        config: Config,
+        examples,
     ):
-        examples = self.build_examples(text, embedder, reranker, config)
         sprompt = self.prompt_templates["system"].render(examples=examples, text=text)
         uprompt = self.prompt_templates[prompt_id].render(
             examples=examples, text=text, **prev_prompt_out_states, data=all_features
@@ -128,15 +130,7 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
 
         return sprompt, uprompt
 
-    def format_simple(
-        self,
-        text: str,
-        all_features: dict[str, any],
-        embedder: BaseEmbedder,
-        reranker: BaseReranker,
-        config: Config,
-    ):
-        examples = self.build_examples(text, embedder, reranker, config)
+    def format_simple(self, text: str, all_features: dict[str, any], examples):
         sprompt = self.prompt_templates["system"].render(
             text=text, examples=examples, data=all_features
         )
