@@ -182,7 +182,11 @@ class Ragthoven:
                     )
 
                     if i == 0 and self.config.llm.log_first:
-                        print(f"Logging on first data: {sprompt}, {uprompt}, {pres}")
+                        print(
+                            PROMPT_LOGGING.format(
+                                sprompt=sprompt, uprompt=uprompt, pres=pres
+                            )
+                        )
 
                     named_prompts_with_output[prompt.name].out = pres
                 self.output_write.append(pres, id)
