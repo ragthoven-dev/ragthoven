@@ -2,7 +2,6 @@ import logging
 
 import tqdm
 
-
 from ragthoven.constants import PROMPT_LOGGING
 from ragthoven.executors.cde_embedder import CDEEmbedder
 from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
@@ -194,7 +193,11 @@ class Ragthoven:
                 )
                 pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
                 if i == 0 and self.config.llm.log_first:
-                    print(PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres))
+                    print(
+                        PROMPT_LOGGING.format(
+                            sprompt=sprompt, uprompt=uprompt, pres=pres
+                        )
+                    )
                 self.output_write.append(pres, id)
 
         self.output_write.close()
