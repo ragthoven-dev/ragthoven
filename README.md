@@ -164,7 +164,7 @@ adding another variable with two options to the matrix would result in 8 combina
   - `dataset` - This can be any huggingface dataset (eg. `nyu-mll/glue`), a `csv` file (as described bellow) or a `json` file. These can be specified by prefixing the path with `csv:` or `json:` respectively.
   - `input_feature` - which feature to use for embedding/reranking
   - `output_feature` (or `label_feature`) - which feature to use as `input_feature`'s classification label/regression score/summarization summary/translation target.
-  - `split_name` - usefull especially with HuggingFace dataset, leave as `train` when loading `json` or `csv`
+  - `split_name` - useful especially with HuggingFace dataset, leave as `train` when loading `json` or `csv`
   - `textual_labels` - some labels (especially in classification task) may come as indexes (0, 1, 2 ...). In order for LLM to make sense out of these labels, RAGthoven has the ability to translate indexes into textual labels. In the examples bellow this would mean `(0 => "No hatespeech", 1 => "Hate speech")`. Provide an empty array to pass the label directly.
   - `dataset_version` - (Optional) some dataset have multiple versions. Use this parameter to select the desired version.
 
@@ -266,7 +266,7 @@ llm:
         First, let's have a look at wikipedia page about this movie. This is the text of the review:
         {{ data.text }}
 
-        Please first find some usefull information online about this movie.
+        Please first find some useful information online about this movie.
     -
       name: "wikipedia_summary"
       role: "user"

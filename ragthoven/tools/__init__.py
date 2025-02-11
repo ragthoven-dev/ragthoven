@@ -1,7 +1,9 @@
 class BaseFunCalling:
     def __init__(self) -> None:
         self._type = "function"
-        self.nane = "empty"
+        self.name = "empty"
+        self.description = None
+        self.parameters = None
 
     def __call__(self, args):
         raise NotImplemented(
@@ -9,6 +11,9 @@ class BaseFunCalling:
         )
 
     def get_json_schema(self):
+        assert self.description is not None
+        assert self.parameters is not None
+
         tool_schema = {
             "type": self._type,
             "function": {

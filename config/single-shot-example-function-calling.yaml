@@ -28,7 +28,7 @@ llm:
         First, let's have a look at wikipedia page about this movie. This is the text of the review:
         {{ data.text }}
 
-        Please first find some usefull information online about this movie.
+        Please first find some useful information online about this movie.
     -
       name: "wikipedia_summary"
       role: "user"
@@ -41,10 +41,10 @@ llm:
       name: "verdict"
       role: "user"
       prompt: |
-        Give that the summary of the movie is this:
+        Given that the summary of the movie is this:
         {{ wikipedia_summary.out }}
 
         And the review is this:
         {{ data.text }}
 
-        Is the review for the film negative or positive? Respon only with a single word (neg or pos).
+        Is the review for the film negative or positive? Respond only with a single word (neg or pos).
