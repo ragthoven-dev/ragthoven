@@ -22,6 +22,9 @@ from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
 from ragthoven.utils.dataset_loader import dataset_load
 
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 logger = logging.getLogger()
 logger.propagate = False
 logger.setLevel(logging.ERROR)
@@ -132,58 +135,97 @@ class Ragthoven:
         else:
             self.output_write = output_write
 
+    def process_validation_example(self, index, processed_ids):
+        if self.config.results.output_cache_id is not None:
+            example_id = self.validation_dataset[self.config.results.output_cache_id][index]
+        else:
+            example_id = str(index)
+
+        if self.config.results.output_cached and example_id in processed_ids:
+            return None
+
+        text = self.validation_dataset[self.config.validation_data.input_feature][index]
+        all_features = {
+            key: self.validation_dataset[key][index]
+            for key in self.validation_dataset.features.keys()
+        }
+
+        if self.data_preprocessor is not None:
+            all_features = self.data_preprocessor.preprocess(all_features)
+
+        if self.config.llm.prompts is not None:
+            named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
+            for prompt in self.config.llm.prompts:
+                if prompt.name == "system":
+                    continue
+
+                sprompt, uprompt = self.pformater.format_multiple(
+                    text,
+                    all_features,
+                    prompt.name,
+                    named_prompts_with_output,
+                    self.embedder,
+                    self.reranker,
+                    self.config,
+                )
+                pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+                named_prompts_with_output[prompt.name].out = pres
+            
+            return (pres, example_id)
+
+        else:
+            sprompt, uprompt = self.pformater.format_simple(
+                text, all_features, self.embedder, self.reranker, self.config
+            )
+            pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+            
+            return (pres, example_id)
+
     def execute(self):
+        # First embed the training dataset and prepare for the processing
         processed_ids = self.output_write.get_processed_ids()
 
         if self.embedder is not None:
             self.embedder.set_training_dataset(self.train_dataset)
             self.embedder.embedd()
 
-        for i in tqdm.tqdm(
-            range(
-                len(self.validation_dataset[self.config.validation_data.input_feature])
-            )
-        ):
-            if self.config.results.output_cache_id is not None:
-                id = self.validation_dataset[self.config.results.output_cache_id][i]
-            else:
-                id = str(i)
+        # From this point the processing of each validation example begins
+        start_time = time.time()
 
-            if self.config.results.output_cached and id in processed_ids:
-                continue
-
-            text = self.validation_dataset[self.config.validation_data.input_feature][i]
-            all_features = {
-                key: self.validation_dataset[key][i]
-                for key in self.validation_dataset.features.keys()
-            }
-
-            if self.data_preprocessor is not None:
-                all_features = self.data_preprocessor.preprocess(all_features)
-
-            if self.config.llm.prompts is not None:
-                named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
-                for prompt in self.config.llm.prompts:
-                    if prompt.name == "system":
-                        continue
-
-                    sprompt, uprompt = self.pformater.format_multiple(
-                        text,
-                        all_features,
-                        prompt.name,
-                        named_prompts_with_output,
-                        self.embedder,
-                        self.reranker,
-                        self.config,
+        array_to_process = self.validation_dataset[self.config.validation_data.input_feature]
+        
+        # We are using ThreadPoolExecutor to parallelize the processing of the array_to_process elements
+        results = []
+        with ThreadPoolExecutor(max_workers=20) as executor:              
+            future_to_index = {executor.submit(self.process_validation_example, index, processed_ids): index for index in range(len(array_to_process))}
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                try: 
+                    prediction = future.result()
+                    results.append(
+                        {"index": index, "prediction": prediction}
                     )
-                    pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
-                    named_prompts_with_output[prompt.name].out = pres
-                self.output_write.append(pres, id)
+                except Exception as exc:
+                    # TODO @trimitris: printing the index doesn't make much sense. Ideally we want to print the example itself
+                    print(f"Validation example with index: {index}, threw the exception: {exc}")
 
+                    # Throw the exception again, because we want the user to know that something went wrong.
+                    # Otherwise, the failure is going to get lost in the sea of logs in stdout, and the user
+                    # might never realise that some of the examples failed. They will just have gaps in the output 
+                    # file which can cause lower evaluation scores which they might not be able to explain.
+                    raise exc 
+
+        # results are appended to the results list in the order the threads are completed, so they need to be sorted
+        results = sorted(results, key=lambda x: x["index"])
+
+        # write to output file
+        for res in results:
+            if res["prediction"] is not None:
+                self.output_write.append(res["prediction"][0], res["prediction"][1])
             else:
-                sprompt, uprompt = self.pformater.format_simple(
-                    text, all_features, self.embedder, self.reranker, self.config
-                )
-                pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
-                self.output_write.append(pres, id)
+                print(f"Skipping already processed index: {res['index']}")
         self.output_write.close()
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Elapsed time (validation set only): {elapsed_time} seconds")
