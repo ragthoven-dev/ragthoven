@@ -180,24 +180,22 @@ class Ragthoven:
             pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
             
             return (pres, example_id)
-
-    def execute(self):
-        # First embed the training dataset and prepare for the processing
-        processed_ids = self.output_write.get_processed_ids()
-
-        if self.embedder is not None:
-            self.embedder.set_training_dataset(self.train_dataset)
-            self.embedder.embedd()
-
-        # From this point the processing of each validation example begins
-        start_time = time.time()
-
-        array_to_process = self.validation_dataset[self.config.validation_data.input_feature]
         
-        # We are using ThreadPoolExecutor to parallelize the processing of the array_to_process elements
+    def process_batch_parallel(self, start_index, end_index, processed_ids, max_workers=20):
+        '''
+        Processes a batch of examples from the validation set. The batch is defined by the start_index and end_index.
+
+        Args:
+            start_index (int): The index of the first example in the batch
+            end_index (int): The index of the last example in the batch
+            processed_ids (set): A set containing the ids of the examples that have already been processed
+            max_workers (int): The max number of threads to use for parallel processing
+        '''
+
+        # We are using ThreadPoolExecutor to parallelize the processing of the examples in the batch
         results = []
-        with ThreadPoolExecutor(max_workers=20) as executor:              
-            future_to_index = {executor.submit(self.process_validation_example, index, processed_ids): index for index in range(len(array_to_process))}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:              
+            future_to_index = {executor.submit(self.process_validation_example, index, processed_ids): index for index in range(start_index, end_index + 1)}
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
                 try: 
@@ -224,6 +222,33 @@ class Ragthoven:
                 self.output_write.append(res["prediction"][0], res["prediction"][1])
             else:
                 print(f"Skipping already processed index: {res['index']}")
+
+    def execute(self):
+        # First embed the training dataset and prepare for the processing
+        processed_ids = self.output_write.get_processed_ids()
+
+        if self.embedder is not None:
+            self.embedder.set_training_dataset(self.train_dataset)
+            self.embedder.embedd()
+
+        # From this point the processing of each validation example begins
+        start_time = time.time()
+
+        BATCH_SIZE = 100
+        if (BATCH_SIZE <= 0):
+            # this is useful if we expose the BATCH_SIZE in config
+            raise ValueError("Batch size must be greater than 0")
+
+        array_to_process = self.validation_dataset[self.config.validation_data.input_feature]
+        num_batches = len(array_to_process) // BATCH_SIZE + (0 if (len(array_to_process) % BATCH_SIZE == 0) else 1)
+
+        for batch in tqdm.tqdm(range(num_batches)):
+            start_index = batch * BATCH_SIZE
+            end_index = min((batch + 1) * BATCH_SIZE - 1, len(array_to_process) - 1)
+
+            print(f"Processing batch: {batch} with start_index: {start_index} and end_index: {end_index}")
+            self.process_batch_parallel(start_index, end_index, processed_ids)
+        
         self.output_write.close()
 
         end_time = time.time()
