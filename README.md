@@ -31,6 +31,7 @@ Features:
 
 - 🚀 Run end-to-end retrieval-augmented generation (RAG) experiments with minimal setup.
 - ⚙️ Configure indexing, retrieval, re-ranking, and generation using YAML or CLI.
+- ⚡ Processes the validation dataset in parallel, for lightning fast experiments.
 - 🔍 Supports multiple retrievers and rerankers for scalable experimentation.
 - 📊 Use matrixable options to define multiple pipeline configurations for batch evaluation.
 - 📈 Automate benchmarking for consistent and reproducible RAG-based evaluations.
