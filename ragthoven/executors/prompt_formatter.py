@@ -110,9 +110,11 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
             self.examples_cache_id = text
             return self.examples_cache
 
-    def format_prompt(self, text, all_features, prompt_id, examples):
+    def format_prompt(
+        self, text, all_features, prompt_id, prev_prompt_out_states, examples
+    ):
         return self.prompt_templates[prompt_id].render(
-            examples=examples, text=text, data=all_features
+            examples=examples, text=text, data=all_features, **prev_prompt_out_states
         )
 
     def format_multiple(
