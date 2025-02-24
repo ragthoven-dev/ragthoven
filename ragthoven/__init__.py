@@ -3,7 +3,6 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import litellm
 import tqdm
 
 from ragthoven.constants import PROMPT_LOGGING
@@ -188,6 +187,17 @@ class Ragthoven:
             response = self.pexecutor.get_messages_prompt_results(
                 messages, tools=prompts[i].tools
             )
+
+            if response == self.config.results.bad_request_default_value:
+                messages.append(
+                    {"role": "assistant", "content": str(response)}
+                )
+
+                # return response if the prompt is last
+                if i == len(prompts) - 1:
+                    return str(self.config.results.bad_request_default_value)
+                continue
+            
             model_response = response.choices[0].message
             named_prompts_with_output[prompts[i].name] = model_response
 
