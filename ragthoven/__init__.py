@@ -199,7 +199,7 @@ class Ragthoven:
                 continue
             
             model_response = response.choices[0].message
-            named_prompts_with_output[prompts[i].name] = model_response
+            named_prompts_with_output[prompts[i].name].out = model_response
 
             tool_calls = (
                 model_response.tool_calls
