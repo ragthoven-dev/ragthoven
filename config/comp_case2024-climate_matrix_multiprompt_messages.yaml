@@ -1,0 +1,70 @@
+name: "Shared task on Climate Activism Stance and Hate Event Detection at CASE 2024"
+
+training_data:
+  dataset: "csv:./data/SubTask-A-train.csv"
+  input_feature: "tweet"
+  label_feature: "label"
+  split_name: "train"
+  textual_labels: ["No hatespeech", "Hate speech"]
+
+validation_data:
+  input_feature: "tweet"
+  split_name: "train"
+  dataset: "csv:./data/SubTask-A-test.csv"
+
+results:
+  output_cached: true
+  output_cache_id: "index"
+  bad_request_default_value: -1
+
+embed:
+  k: 20
+
+rerank:
+  k: [5, 1]
+
+llm:
+  model: "azure/gpt-4o"
+  temperature: 0
+  messages: true
+  prompts: 
+    -
+      name: "system"
+      role: "system"
+      prompt: |
+        Analyze the input tweet to determine if it is hate speech or not, based on the following criteria:
+
+        ## Hate Speech Patterns
+
+        1. Presence of "You've been fooled by Greta Thunberg" or #FridaysForFuture in the tweet.
+        2. Embodies aggression or contempt towards specific groups or institutions, including dismissive attitudes towards climate activists, criticism of world leaders for climate inaction, or strong sentiments against companies investing in fossil fuels.
+        3. Frequent use of negative language, such as 'shame', 'lie', 'greedy', 'fake', 'idiot', to express dissatisfaction or attack others.
+        4. Highlights a strong ideological alignment or belief, often against fossil fuels and blaming capitalism for the climate crisis, indicating belief-driven intolerance.
+        5. The tone is accusatory, confrontational, and not oriented towards dialogue or understanding.
+
+        ## Non-Hate Speech Patterns
+
+        1. Expresses concern about climate change and promotes action without aggression or contempt. Advocates for policy changes, shares environmental information, and encourages collective action rather than targeting individuals or groups.
+        2. Lacks negative language or personal attacks.
+        3. Presents a clear ideological stance on climate change in a constructive or informative manner, aiming to educate or raise awareness rather than cast blame.
+        4. The tone is conversational and informative, promoting understanding and engagement rather than confrontation.
+
+        ## Examples
+      
+        {{ examples }}
+    -
+      name: "select_key_phrases"
+      role: "user"
+      prompt: |
+        Try to reason and think of the words and phrases that best describe the mood/behaviour of the person writing
+        that text. Try to list at least 5 - 6 words/phrases.
+        Text: {{ text }}
+    -
+      name: "result"
+      role: "user"
+      prompt: |
+        Please determine the category of the text given the text and words/phrases describing it's sentiment.
+        Use "1" for hatespeech tweets and "0" for all other:
+        Text: {{ text }}
+        Sentiment keywords: {{ select_key_phrases.out }}
+        ANSER ONLY WITH A SINGLE NUMBER!
