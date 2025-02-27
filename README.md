@@ -338,8 +338,9 @@ preprocessor:
 #### Function calling
 RAGthoven provides a way to use function calling. LLMs can be provided with tools (e.g. functions to call) which can help them fetch fresh data from various sources or take actions (e.g. call an API, send an email etc). The LLM can then decide on its own whether it needs to call any of the provided functions and what arguments to pass to those functions. You can read more about function calling [here](https://platform.openai.com/docs/guides/function-calling?example=get-weather). 
 
-Note that the LLM does not actually perform the function call - it merely notes in its response that it wants the function to be executed with specific arguments, and then RAGthoven executes the function. Finally, the results of the function call can be
-used in a subsequent prompt to the LLM.
+Note that the LLM does not actually perform the function call - it merely notes in its response that it wants the function to be executed with specific arguments, and then RAGthoven executes the function. Finally, the results of the function call can be used in the 2 following ways:
+1. If you set `llm.messages: true` in the config, then the results of the function call will be forwarded to the LLM in any api call to the LLM for any future prompts (for the current validation example). The messages are passed along as part of the array of messages which contain the whole conversation, that the LLM API accepts.
+2. If you set `llm.messages: false` in the config, then no messages array is passed to the LLM and the results of the function call can be used manually in a subsequent prompt to the LLM. You need to specify in the yaml config where they will be used inside a prompt.
 
 Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write functions for function calling. Also, in order to use function calling, please use multiprompt in your yaml config (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
 
