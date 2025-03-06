@@ -26,9 +26,6 @@ def chromadb_normalize_name(collection_name: str):
 def get_class_func_name_only(path: str):
     whole_hierarchy = path.split(".")
 
-    if len(whole_hierarchy) == 1:
-        return whole_hierarchy[0]
-
     return whole_hierarchy[len(whole_hierarchy) - 1]
 
 
