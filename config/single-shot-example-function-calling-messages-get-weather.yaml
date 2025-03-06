@@ -1,0 +1,29 @@
+name: "Entity detection"
+
+validation_data:
+  dataset: "stanfordnlp/imdb"
+  input_feature: "text"
+  split_name: "test"
+
+results:
+  output_cached: true
+  bad_request_default_value: -1
+
+llm:
+  log_first: true
+  messages: true
+  model: "azure/gpt-4o"
+  temperature: 0
+  tools: ["example_fun_calling.GetWeather"]
+  prompts:
+    -
+      name: "system"
+      role: "system"
+      prompt:
+        You are a meteorologist. You will be asked to provide the weather forecast for a specific location.
+    -
+      name: "verdict"
+      role: "user"
+      tools: ["GetWeather"]
+      prompt: |
+        What's the weather like in Paris today?

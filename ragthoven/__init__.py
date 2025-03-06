@@ -189,23 +189,17 @@ class Ragthoven:
             )
 
             if response == self.config.results.bad_request_default_value:
-                messages.append(
-                    {"role": "assistant", "content": str(response)}
-                )
+                messages.append({"role": "assistant", "content": str(response)})
 
                 # return response if the prompt is last
                 if i == len(prompts) - 1:
                     return str(self.config.results.bad_request_default_value)
                 continue
-            
+
             model_response = response.choices[0].message
             named_prompts_with_output[prompts[i].name].out = model_response
 
-            tool_calls = (
-                model_response.tool_calls
-                if model_response.tool_calls is not None
-                else None
-            )
+            tool_calls = model_response.tool_calls
             processed_tool_calls = self.pexecutor.get_all_function_calls(tool_calls)
 
             if tool_calls:
@@ -224,6 +218,20 @@ class Ragthoven:
                     {"role": "assistant", "content": model_response.content}
                 )
 
+        # In case the last prompt has a tool call, similar to the example from OpenAI
+        # https://platform.openai.com/docs/guides/function-calling?example=get-weather
+        if model_response.tool_calls is not None and len(model_response.tool_calls) > 0:
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=prompts[len(prompts) - 1].tools
+            )
+            if response == self.config.results.bad_request_default_value:
+                messages.append({"role": "assistant", "content": str(response)})
+            else:
+                model_response = response.choices[0].message
+                messages.append(
+                    {"role": "assistant", "content": model_response.content}
+                )
+
         if j == 0 and self.config.llm.log_first:
             debug_messages = []
             for message in messages:
@@ -231,13 +239,22 @@ class Ragthoven:
                     debug_messages.append(
                         {
                             "role": "assistant",
-                            "tool_calls": message.tool_calls[0].function.name,
-                            "arguments": message.tool_calls[0].function.arguments,
+                            "tool_calls": [
+                                tool_call.function.name
+                                for tool_call in message.tool_calls
+                            ],
+                            "arguments": [
+                                tool_call.function.arguments
+                                for tool_call in message.tool_calls
+                            ],
                         }
                     )
                 else:
                     debug_messages.append(message)
             print(json.dumps(debug_messages, indent=2))
+
+        if response == self.config.results.bad_request_default_value:
+            return str(self.config.results.bad_request_default_value)
 
         return model_response.content
 
