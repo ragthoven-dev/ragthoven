@@ -137,23 +137,11 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
     
     You can always use the `--help` option to know which output formats are supported.
 
-### YAML configuration
+## YAML configuration
 
 To configure RAGthoven to run experiment on a dataset it needs a valid configuration file. The structure of configuration file is logicaly split into sections and it is described bellow. The configuration file described below can bee found in [`config/comp_case2024-climate_matrix_multiprompt_custom_examples.yaml`](./config/comp_case2024-climate_matrix_multiprompt_custom_examples.yaml).
 
-#### Matrix configuration
-
-Some parameters are *Matrixable* - support matrix configuration. The matrix configuration runs for every configuration.
-
-eg. when two variables are set `k: [20, 10]` and `n: [5, 1]` the there are 4 combinations evaluated:
-1. `k: 20, n: 5`
-2. `k: 20, n: 1`
-3. `k: 10, n: 5`
-4. `k: 10, n: 1`
-
-adding another variable with two options to the matrix would result in 8 combinations.
-
-#### RAGthoven configuration
+### Config file sections
 
 - Every RAGthoven run requires a name, making it a required argument.
   ```yaml
@@ -169,7 +157,7 @@ adding another variable with two options to the matrix would result in 8 combina
   - `textual_labels` - some labels (especially in classification task) may come as indexes (0, 1, 2 ...). In order for LLM to make sense out of these labels, RAGthoven has the ability to translate indexes into textual labels. In the examples bellow this would mean `(0 => "No hatespeech", 1 => "Hate speech")`. Provide an empty array to pass the label directly.
   - `dataset_version` - (Optional) some dataset have multiple versions. Use this parameter to select the desired version.
 
-A full example:
+  A full example:
 
   ```yaml
   training_data:
@@ -238,53 +226,12 @@ A full example can be seen below:
     model: "ms-marco-MiniLM-L-12-v2"
   ```
 
-- The RAGthoven provides a way to run custom python code on every validation data. Please refer to code [`ragthoven/tools/example_tool.py`](ragthoven/tools/example_tool.py) on how to write a tool for RAGthoven preprocessing. In order to specify which tools to run, specify them in `yaml` config as follows: 
-
-(Note that the tools are run sequentially, in the order of appearance in the `entries` key of the YAML config.)
-
-```yaml
-preprocessor:
-  entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
-```
-
-- The RAGthoven provides a way to run a function calling. Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write a function calling prompts and how to write functions for function calling. In order to use function calling, please use multiprompt (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
-
-```yaml
-llm:
-  ...
-  tools: ["example_fun_calling.WikipediaPageSearch", "example_fun_calling.WikipediaPageSummary"]
-  prompts:
-    -
-      name: "system"
-      role: "system"
-      prompt:
-        You are the best at knowing ...
-    -
-      name: "wikipedia_search"
-      role: "user"
-      tools: ["WikipediaPageSearch"]
-      prompt: |
-        First, let's have a look at wikipedia page about this movie. This is the text of the review:
-        {{ data.text }}
-
-        Please first find some useful information online about this movie.
-    -
-      name: "wikipedia_summary"
-      role: "user"
-      tools: ["WikipediaPageSummary"]
-      prompt: |
-        Now, you have obtained following list of results for your search:
-        {{ wikipedia_search.out }}
-        Please obtain a summary of this movie.
-    ...
-```
-
-- At the hearth of RAGthoven, there is always a call to an LLM API, be it local or commercial.
+- At the heart of RAGthoven, there is always a call to an LLM API, be it local or commercial.
   - `model` - which model to use. *Matrixable*, provide an array of models.
   - `temperature` - (Optional) - temperature for the models decoder. Defaults to `0`. *Matrixable*, provide array with temperature values.
   - `examples` - (Optional) examples can be ordered, arranged and arbitrary textual information can be added.
 
-A full example can be seen below:
+  A full example can be seen below:
 
   ```yaml
   llm:
@@ -298,7 +245,22 @@ A full example can be seen below:
   ...
   ```
 
-  #### Prompts can be specified in two ways
+### Special features
+#### Matrix configuration
+
+Some parameters are *Matrixable* - support matrix configuration. The matrix configuration runs for every configuration.
+
+eg. when two variables are set `k: [20, 10]` and `n: [5, 1]` the there are 4 combinations evaluated:
+1. `k: 20, n: 5`
+2. `k: 20, n: 1`
+3. `k: 10, n: 5`
+4. `k: 10, n: 1`
+
+adding another variable with two options to the matrix would result in 8 combinations.
+
+#### Multiple prompts
+
+  Prompts can be specified in two ways: 
   - **Multiprompt version**: specify prompts in array named `prompts` with following structure:
     - `name` - name of the prompt, this is used to later access output of specific prompt as input in another. There is one special prompt added into every call called `system` with role `system`.
     - `role` - select `system` or `user` role (or any other role supported by the model).
@@ -362,6 +324,55 @@ An example of the **single prompt** version of the configuration.
       {{ text }}
       ANSER ONLY WITH SINGLE NUMBER!
   ```
+
+#### Preprocessing
+RAGthoven provides a way to run custom python code on every example in the validation dataset. Please refer to code [`ragthoven/tools/example_tool.py`](ragthoven/tools/example_tool.py) on how to write a tool for RAGthoven preprocessing. In order to specify which tools to run, specify them in `yaml` config as follows: 
+
+(Note that the tools are run sequentially, in the order of appearance in the `entries` key of the YAML config.)
+
+```yaml
+preprocessor:
+  entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
+```
+
+#### Function calling
+RAGthoven provides a way to use function calling. LLMs can be provided with tools (e.g. functions to call) which can help them fetch fresh data from various sources or take actions (e.g. call an API, send an email etc). The LLM can then decide on its own whether it needs to call any of the provided functions and what arguments to pass to those functions. You can read more about function calling [here](https://platform.openai.com/docs/guides/function-calling?example=get-weather). 
+
+Note that the LLM does not actually perform the function call - it merely notes in its response that it wants the function to be executed with specific arguments, and then RAGthoven executes the function. Finally, the results of the function call can be used in the 2 following ways:
+1. If you set `llm.messages: true` in the config, then the results of the function call will be forwarded to the LLM in any api call to the LLM for any future prompts (for the current validation example). The messages are passed along as part of the array of messages which contain the whole conversation, that the LLM API accepts.
+2. If you set `llm.messages: false` in the config, then no messages array is passed to the LLM and the results of the function call can be used manually in a subsequent prompt to the LLM. You need to specify in the yaml config where they will be used inside a prompt.
+
+Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write functions for function calling. Also, in order to use function calling, please use multiprompt in your yaml config (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
+
+```yaml
+llm:
+  ...
+  tools: ["example_fun_calling.WikipediaPageSearch", "example_fun_calling.WikipediaPageSummary"]
+  prompts:
+    -
+      name: "system"
+      role: "system"
+      prompt:
+        You are the best at knowing ...
+    -
+      name: "wikipedia_search"
+      role: "user"
+      tools: ["WikipediaPageSearch"]
+      prompt: |
+        First, let's have a look at wikipedia page about this movie. This is the text of the review:
+        {{ data.text }}
+
+        Please first find some useful information online about this movie.
+    -
+      name: "wikipedia_summary"
+      role: "user"
+      tools: ["WikipediaPageSummary"]
+      prompt: |
+        Now, you have obtained following list of results for your search:
+        {{ wikipedia_search.out }}
+        Please obtain a summary of this movie.
+    ...
+```
 
 
 ## Tests
