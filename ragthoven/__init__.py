@@ -1,7 +1,11 @@
+import json
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import tqdm
 
+from ragthoven.constants import PROMPT_LOGGING
 from ragthoven.executors.cde_embedder import CDEEmbedder
 from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
 from ragthoven.executors.output_writer import (
@@ -21,9 +25,6 @@ from ragthoven.executors.prompt_formatter import (
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
 from ragthoven.utils.dataset_loader import dataset_load
-
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger()
 logger.propagate = False
@@ -135,9 +136,155 @@ class Ragthoven:
         else:
             self.output_write = output_write
 
+    def execute_single_prompt(self, i, text, all_features):
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+        sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
+        pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+        if i == 0 and self.config.llm.log_first:
+            print(PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres))
+        return pres
+
+    def execute_messages_prompts(self, j, text, all_features):
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+        prompts = self.config.llm.prompts
+        system_prompt = prompts[0]
+        named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
+
+        if system_prompt.name != "system" or system_prompt.role != "system":
+            raise ValueError("First prompt is not a system prompt")
+
+        messages = [
+            {
+                "role": system_prompt.role,
+                "content": self.pformater.format_prompt(
+                    text,
+                    all_features,
+                    system_prompt.name,
+                    named_prompts_with_output,
+                    examples,
+                ),
+            },
+        ]
+
+        for i in range(1, len(prompts)):
+            messages.append(
+                {
+                    "role": prompts[i].role,
+                    "content": self.pformater.format_prompt(
+                        text,
+                        all_features,
+                        prompts[i].name,
+                        named_prompts_with_output,
+                        examples,
+                    ),
+                }
+            )
+
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=prompts[i].tools
+            )
+
+            if response == self.config.results.bad_request_default_value:
+                messages.append({"role": "assistant", "content": str(response)})
+
+                # return response if the prompt is last
+                if i == len(prompts) - 1:
+                    return str(self.config.results.bad_request_default_value)
+                continue
+
+            model_response = response.choices[0].message
+            named_prompts_with_output[prompts[i].name].out = model_response
+
+            tool_calls = model_response.tool_calls
+            processed_tool_calls = self.pexecutor.get_all_function_calls(tool_calls)
+
+            if tool_calls:
+                messages.append(model_response)
+                for tool_call in processed_tool_calls:
+                    _, function_result, tool_call_id = tool_call
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "content": function_result,
+                        }
+                    )
+            else:
+                messages.append(
+                    {"role": "assistant", "content": model_response.content}
+                )
+
+        # In case the last prompt has a tool call, similar to the example from OpenAI
+        # https://platform.openai.com/docs/guides/function-calling?example=get-weather
+        if model_response.tool_calls is not None and len(model_response.tool_calls) > 0:
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=prompts[len(prompts) - 1].tools
+            )
+            if response == self.config.results.bad_request_default_value:
+                messages.append({"role": "assistant", "content": str(response)})
+            else:
+                model_response = response.choices[0].message
+                messages.append(
+                    {"role": "assistant", "content": model_response.content}
+                )
+
+        if j == 0 and self.config.llm.log_first:
+            debug_messages = []
+            for message in messages:
+                if type(message) is not dict:
+                    debug_messages.append(
+                        {
+                            "role": "assistant",
+                            "tool_calls": [
+                                tool_call.function.name
+                                for tool_call in message.tool_calls
+                            ],
+                            "arguments": [
+                                tool_call.function.arguments
+                                for tool_call in message.tool_calls
+                            ],
+                        }
+                    )
+                else:
+                    debug_messages.append(message)
+            print(json.dumps(debug_messages, indent=2))
+
+        if response == self.config.results.bad_request_default_value:
+            return str(self.config.results.bad_request_default_value)
+
+        return model_response.content
+
+    def execute_sequential_prompts(self, i, text, all_features):
+        named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+
+        for prompt in self.config.llm.prompts:
+            if prompt.name == "system":
+                continue
+            sprompt, uprompt = self.pformater.format_multiple(
+                text, all_features, prompt.name, named_prompts_with_output, examples
+            )
+            pres = self.pexecutor.get_prompt_results(sprompt, uprompt, prompt.tools)
+
+            if i == 0 and self.config.llm.log_first:
+                print(
+                    PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres)
+                )
+            named_prompts_with_output[prompt.name].out = pres
+
+        return pres
+
     def process_validation_example(self, index, processed_ids):
         if self.config.results.output_cache_id is not None:
-            example_id = self.validation_dataset[self.config.results.output_cache_id][index]
+            example_id = self.validation_dataset[self.config.results.output_cache_id][
+                index
+            ]
         else:
             example_id = str(index)
 
@@ -153,36 +300,22 @@ class Ragthoven:
         if self.data_preprocessor is not None:
             all_features = self.data_preprocessor.preprocess(all_features)
 
+        pres = None
         if self.config.llm.prompts is not None:
-            named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
-            for prompt in self.config.llm.prompts:
-                if prompt.name == "system":
-                    continue
-
-                sprompt, uprompt = self.pformater.format_multiple(
-                    text,
-                    all_features,
-                    prompt.name,
-                    named_prompts_with_output,
-                    self.embedder,
-                    self.reranker,
-                    self.config,
-                )
-                pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
-                named_prompts_with_output[prompt.name].out = pres
-            
-            return (pres, example_id)
-
+            use_messages = self.config.llm.messages
+            if use_messages:
+                pres = self.execute_messages_prompts(index, text, all_features)
+            else:
+                pres = self.execute_sequential_prompts(index, text, all_features)
         else:
-            sprompt, uprompt = self.pformater.format_simple(
-                text, all_features, self.embedder, self.reranker, self.config
-            )
-            pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
-            
-            return (pres, example_id)
-        
-    def process_batch_parallel(self, start_index, end_index, processed_ids, max_workers=20):
-        '''
+            pres = self.execute_single_prompt(index, text, all_features)
+
+        return (pres, example_id)
+
+    def process_batch_parallel(
+        self, start_index, end_index, processed_ids, max_workers=20
+    ):
+        """
         Processes a batch of examples from the validation set. The batch is defined by the start_index and end_index.
 
         Args:
@@ -190,28 +323,33 @@ class Ragthoven:
             end_index (int): The index of the last example in the batch
             processed_ids (set): A set containing the ids of the examples that have already been processed
             max_workers (int): The max number of threads to use for parallel processing
-        '''
+        """
 
         # We are using ThreadPoolExecutor to parallelize the processing of the examples in the batch
         results = []
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:              
-            future_to_index = {executor.submit(self.process_validation_example, index, processed_ids): index for index in range(start_index, end_index + 1)}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_index = {
+                executor.submit(
+                    self.process_validation_example, index, processed_ids
+                ): index
+                for index in range(start_index, end_index + 1)
+            }
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
-                try: 
+                try:
                     prediction = future.result()
-                    results.append(
-                        {"index": index, "prediction": prediction}
-                    )
+                    results.append({"index": index, "prediction": prediction})
                 except Exception as exc:
                     # TODO @trimitris: printing the index doesn't make much sense. Ideally we want to print the example itself
-                    print(f"Validation example with index: {index}, threw the exception: {exc}")
+                    print(
+                        f"Validation example with index: {index}, threw the exception: {exc}"
+                    )
 
                     # Throw the exception again, because we want the user to know that something went wrong.
                     # Otherwise, the failure is going to get lost in the sea of logs in stdout, and the user
-                    # might never realise that some of the examples failed. They will just have gaps in the output 
+                    # might never realise that some of the examples failed. They will just have gaps in the output
                     # file which can cause lower evaluation scores which they might not be able to explain.
-                    raise exc 
+                    raise exc
 
         # results are appended to the results list in the order the threads are completed, so they need to be sorted
         results = sorted(results, key=lambda x: x["index"])
@@ -235,20 +373,26 @@ class Ragthoven:
         start_time = time.time()
 
         BATCH_SIZE = 100
-        if (BATCH_SIZE <= 0):
+        if BATCH_SIZE <= 0:
             # this is useful if we expose the BATCH_SIZE in config
             raise ValueError("Batch size must be greater than 0")
 
-        array_to_process = self.validation_dataset[self.config.validation_data.input_feature]
-        num_batches = len(array_to_process) // BATCH_SIZE + (0 if (len(array_to_process) % BATCH_SIZE == 0) else 1)
+        array_to_process = self.validation_dataset[
+            self.config.validation_data.input_feature
+        ]
+        num_batches = len(array_to_process) // BATCH_SIZE + (
+            0 if (len(array_to_process) % BATCH_SIZE == 0) else 1
+        )
 
         for batch in tqdm.tqdm(range(num_batches)):
             start_index = batch * BATCH_SIZE
             end_index = min((batch + 1) * BATCH_SIZE - 1, len(array_to_process) - 1)
 
-            print(f"Processing batch: {batch} with start_index: {start_index} and end_index: {end_index}")
+            print(
+                f"Processing batch: {batch} with start_index: {start_index} and end_index: {end_index}"
+            )
             self.process_batch_parallel(start_index, end_index, processed_ids)
-        
+
         self.output_write.close()
 
         end_time = time.time()

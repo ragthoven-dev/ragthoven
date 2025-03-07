@@ -23,6 +23,12 @@ def chromadb_normalize_name(collection_name: str):
     )[:32] + "".join(random.choices(string.ascii_letters, k=5))
 
 
+def get_class_func_name_only(path: str):
+    whole_hierarchy = path.split(".")
+
+    return whole_hierarchy[len(whole_hierarchy) - 1]
+
+
 def get_func(module_name: str, func_name: str):
     whole_hierarchy = func_name.split(".")
 
@@ -34,3 +40,7 @@ def get_func(module_name: str, func_name: str):
     module = importlib.import_module(module_full_name)
     func = getattr(module, whole_hierarchy[len(whole_hierarchy) - 1])
     return func
+
+
+def get_class(module_name: str, class_name: str):
+    return get_func(module_name, class_name)

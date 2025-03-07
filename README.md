@@ -165,7 +165,7 @@ adding another variable with two options to the matrix would result in 8 combina
   - `dataset` - This can be any huggingface dataset (eg. `nyu-mll/glue`), a `csv` file (as described bellow) or a `json` file. These can be specified by prefixing the path with `csv:` or `json:` respectively.
   - `input_feature` - which feature to use for embedding/reranking
   - `output_feature` (or `label_feature`) - which feature to use as `input_feature`'s classification label/regression score/summarization summary/translation target.
-  - `split_name` - usefull especially with HuggingFace dataset, leave as `train` when loading `json` or `csv`
+  - `split_name` - useful especially with HuggingFace dataset, leave as `train` when loading `json` or `csv`
   - `textual_labels` - some labels (especially in classification task) may come as indexes (0, 1, 2 ...). In order for LLM to make sense out of these labels, RAGthoven has the ability to translate indexes into textual labels. In the examples bellow this would mean `(0 => "No hatespeech", 1 => "Hate speech")`. Provide an empty array to pass the label directly.
   - `dataset_version` - (Optional) some dataset have multiple versions. Use this parameter to select the desired version.
 
@@ -245,6 +245,38 @@ A full example can be seen below:
 ```yaml
 preprocessor:
   entries: ["example_tool.fizzbuzz", "example_tool.count_ands"]
+```
+
+- The RAGthoven provides a way to run a function calling. Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write a function calling prompts and how to write functions for function calling. In order to use function calling, please use multiprompt (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
+
+```yaml
+llm:
+  ...
+  tools: ["example_fun_calling.WikipediaPageSearch", "example_fun_calling.WikipediaPageSummary"]
+  prompts:
+    -
+      name: "system"
+      role: "system"
+      prompt:
+        You are the best at knowing ...
+    -
+      name: "wikipedia_search"
+      role: "user"
+      tools: ["WikipediaPageSearch"]
+      prompt: |
+        First, let's have a look at wikipedia page about this movie. This is the text of the review:
+        {{ data.text }}
+
+        Please first find some useful information online about this movie.
+    -
+      name: "wikipedia_summary"
+      role: "user"
+      tools: ["WikipediaPageSummary"]
+      prompt: |
+        Now, you have obtained following list of results for your search:
+        {{ wikipedia_search.out }}
+        Please obtain a summary of this movie.
+    ...
 ```
 
 - At the hearth of RAGthoven, there is always a call to an LLM API, be it local or commercial.
