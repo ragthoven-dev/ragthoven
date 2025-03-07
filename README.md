@@ -63,7 +63,7 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
 1. Create a `.env` file
 
     ```sh
-    cp .env.example .env
+    cp .env.sample .env
     ```
 
 1. Set up the [LLM](https://docs.litellm.ai/docs/providers) by setting the correct environment variables.
