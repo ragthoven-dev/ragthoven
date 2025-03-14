@@ -75,7 +75,7 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
 1. Run the project
 
     ```sh
-    python main.py <config file path>
+    ragthoven <config file path>
     ```
     Sample config files can be found in the `config/` directory.  
     
@@ -122,7 +122,7 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
     To obtain the actual results for the test split, you can run the following:
 
     ```sh
-    python main.py config/example_ag_news.yaml
+    ragthoven config/example_ag_news.yaml
     ```
 
 3. Optional: Select output format
@@ -130,7 +130,7 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
     You can also select the output format with the CLI option `--output`. See example below:
     
       ```sh
-      python main.py <config file path> --output csv
+      ragthoven <config file path> --output csv
       ```
     
     The default output format is `.jsonl`, if the output format is not specified.
@@ -409,7 +409,7 @@ This is a tutorial about how to use RAGthoven to classify News headlines into ca
 1. Run RAGthoven against the yaml file:
 
     ```sh
-    python main.py ragthoven/config/example_ag_news.yaml
+    ragthoven config/example_ag_news.yaml
     ```
 
     Note that this step will take a lot of time to run, since it needs to process the whole validation dataset. Feel free to terminate the program prematurely after about 20 seconds to move on to the next step of this tutorial.
