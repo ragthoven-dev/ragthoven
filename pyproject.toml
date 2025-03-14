@@ -21,7 +21,10 @@ typer = "^0.12.5"
 protobuf = "<3.20"
 tqdm = "^4.66.5"
 einops = "^0.8.0"
-torch = {version = "^2.5.1", source = "pytorch_cpu"}
+torch = [
+  {version = "^2.6.0", platform="darwin"},
+  {version = "^2.6.0+cpu", platform="!=darwin", source = "pytorch_cpu"},
+]
 
 [tool.poetry.scripts]
 ragthoven = "main:app"
@@ -30,7 +33,6 @@ ragthoven = "main:app"
 black = "^24.8.0"
 pytest = "^8.3.3"
 isort = "^5.13.2"
-
 
 [[tool.poetry.source]]
 name = "pytorch_cpu"
