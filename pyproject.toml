@@ -21,7 +21,7 @@ typer = "^0.12.5"
 protobuf = "<3.20"
 tqdm = "^4.66.5"
 einops = "^0.8.0"
-torch = {version = "^2.6.0", source = "pytorch_cpu"}
+torch = {version = "^2.5.1", source = "pytorch_cpu"}
 
 [tool.poetry.scripts]
 ragthoven = "main:app"
