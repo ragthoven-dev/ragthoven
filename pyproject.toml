@@ -24,7 +24,7 @@ tqdm = "^4.66.5"
 einops = "^0.8.0"
 
 [tool.poetry.scripts]
-ragthoven = "main:app"
+ragthoven = "ragthoven.standalone:app"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
