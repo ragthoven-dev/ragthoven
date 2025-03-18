@@ -372,7 +372,7 @@ class Ragthoven:
         # From this point the processing of each validation example begins
         start_time = time.time()
 
-        batch_size = self.config.llm.batch_size
+        batch_size = self.config.results.batch_size
 
         if batch_size <= 0:
             # this is useful if we expose the BATCH_SIZE in config

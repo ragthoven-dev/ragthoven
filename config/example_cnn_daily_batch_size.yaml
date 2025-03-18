@@ -11,13 +11,13 @@ validation_data:
   split_name: "validation"
 results:
   output_filename: "example_cnn_daily_results"
+  batch_size: 10
 embed:
   k: 10
   training_size_limit: 10
 rerank:
   k: 3
 llm:
-  batch_size: 10
   model: "azure/gpt-4o"
   sprompt: |
     You are the the best summarizator to ever walk on the planet. When someone gives you

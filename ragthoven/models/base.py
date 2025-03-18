@@ -46,6 +46,7 @@ class Results:
     output_cached: Optional[str] = None
     output_cache_id: Optional[str] = None
     bad_request_default_value: Optional[str] = None
+    batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     output_filename: Optional[str] = (
         "results"  # should have no extension (i.e. no "results.jsonl")
     )
@@ -95,7 +96,6 @@ class LLM:
     sprompt: Optional[str | list[str]] = None
     uprompt: Optional[str | list[str]] = None
     prompts: Optional[list[Prompt]] = None
-    batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     tools: Optional[list[str]] = None
     examples: Optional[str] = None
     model: Optional[str] | list[str] = "gpt-4o"
