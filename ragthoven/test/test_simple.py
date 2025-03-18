@@ -51,6 +51,14 @@ def test_example_cnn_daily(setup_env):
     r.execute()
 
 
+def test_example_cnn_daily_batched(setup_env):
+    cfg_path = "ragthoven/test/test_config/example_cnn_daily_batch_size.yaml"
+    config = load_config(cfg_path)
+    r = Ragthoven(config)
+    r.validation_dataset = r.validation_dataset.select(range(2))
+    r.execute()
+
+
 def test_example_dialogsum(setup_env):
     cfg_path = "ragthoven/test/test_config/example_dialogsum.yaml"
     config = load_config(cfg_path)

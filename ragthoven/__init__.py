@@ -372,21 +372,22 @@ class Ragthoven:
         # From this point the processing of each validation example begins
         start_time = time.time()
 
-        BATCH_SIZE = 100
-        if BATCH_SIZE <= 0:
+        batch_size = self.config.llm.batch_size
+
+        if batch_size <= 0:
             # this is useful if we expose the BATCH_SIZE in config
             raise ValueError("Batch size must be greater than 0")
 
         array_to_process = self.validation_dataset[
             self.config.validation_data.input_feature
         ]
-        num_batches = len(array_to_process) // BATCH_SIZE + (
-            0 if (len(array_to_process) % BATCH_SIZE == 0) else 1
+        num_batches = len(array_to_process) // batch_size + (
+            0 if (len(array_to_process) % batch_size == 0) else 1
         )
 
         for batch in tqdm.tqdm(range(num_batches)):
-            start_index = batch * BATCH_SIZE
-            end_index = min((batch + 1) * BATCH_SIZE - 1, len(array_to_process) - 1)
+            start_index = batch * batch_size
+            end_index = min((batch + 1) * batch_size - 1, len(array_to_process) - 1)
 
             print(
                 f"Processing batch: {batch} with start_index: {start_index} and end_index: {end_index}"

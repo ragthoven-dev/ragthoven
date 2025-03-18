@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+from ragthoven.constants import DEFAULT_BATCH_SIZE
+
 
 class EmbedderType(Enum):
     DEFAULT_CHROMA_EMBEDDER = "sbert"
@@ -93,6 +95,7 @@ class LLM:
     sprompt: Optional[str | list[str]] = None
     uprompt: Optional[str | list[str]] = None
     prompts: Optional[list[Prompt]] = None
+    batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     tools: Optional[list[str]] = None
     examples: Optional[str] = None
     model: Optional[str] | list[str] = "gpt-4o"
