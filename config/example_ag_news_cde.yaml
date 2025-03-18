@@ -14,7 +14,7 @@ results:
 embed:
   k: 10
   training_size_limit: 10
-  model: "jxm/cde-small-v1"
+  model: "jxm/cde-small-v2"
   docs_embedding_count: 512
   embedder: "cde"
 rerank:

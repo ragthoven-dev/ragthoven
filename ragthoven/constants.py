@@ -7,3 +7,5 @@ Logging on first data:
 ====================== model response ======================
 {pres}
 """
+
+DEFAULT_BATCH_SIZE = 100

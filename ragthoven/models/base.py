@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+from ragthoven.constants import DEFAULT_BATCH_SIZE
+
 
 class EmbedderType(Enum):
     DEFAULT_CHROMA_EMBEDDER = "sbert"
@@ -44,6 +46,7 @@ class Results:
     output_cached: Optional[str] = None
     output_cache_id: Optional[str] = None
     bad_request_default_value: Optional[str] = None
+    batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     output_filename: Optional[str] = (
         "results"  # should have no extension (i.e. no "results.jsonl")
     )

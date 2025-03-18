@@ -1,7 +1,6 @@
 format:
 	isort . && \
-	black ragthoven/ && \
-	black main.py
+	black ragthoven
 
 test-fast:
 	mkdir -p test_output && \

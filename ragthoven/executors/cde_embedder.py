@@ -47,8 +47,8 @@ class CDEEmbedder(BaseEmbedder):
             self.training_corpus,
             prompt_name="document",
             dataset_embeddings=self.dataset_embeddings,
-            convert_to_tensor=True,
-        ).cpu()
+            convert_to_numpy=True,
+        )
         self.collection.add(
             embeddings=doc_embeddings,
             ids=list(map(lambda x: str(x), range(0, self.max_range))),
@@ -59,8 +59,8 @@ class CDEEmbedder(BaseEmbedder):
             query,
             prompt_name="query",
             dataset_embeddings=self.dataset_embeddings,
-            convert_to_tensor=True,
-        ).cpu()
+            convert_to_numpy=True,
+        )
         ids = self.collection.query(query_embeddings=[query_embedding], n_results=k)[
             "ids"
         ][0]

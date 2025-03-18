@@ -1,0 +1,31 @@
+name: "CNN Daily main"
+training_data:
+  dataset: "abisee/cnn_dailymail"
+  input_feature: "article"
+  label_feature: "highlights"
+  split_name: "train"
+  textual_labels: []
+  dataset_version: "1.0.0"
+validation_data:
+  input_feature: "article"
+  split_name: "validation"
+results:
+  output_filename: "example_cnn_daily_results"
+  batch_size: 10
+embed:
+  k: 10
+  training_size_limit: 10
+rerank:
+  k: 3
+llm:
+  model: "azure/gpt-4o"
+  sprompt: |
+    You are the the best summarizator to ever walk on the planet. When someone gives you
+    a text you can summarize it while keeping the most important details and providing
+    relatively short output.
+
+    Here are some of the older summaries you created:
+    {{ examples }}
+  uprompt: |
+    Please summarize this text:
+    {{ text }}
