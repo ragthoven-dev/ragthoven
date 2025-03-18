@@ -47,7 +47,7 @@ class CDEEmbedder(BaseEmbedder):
             self.training_corpus,
             prompt_name="document",
             dataset_embeddings=self.dataset_embeddings,
-            convert_to_numpy=True
+            convert_to_numpy=True,
         )
         self.collection.add(
             embeddings=doc_embeddings,
@@ -59,7 +59,7 @@ class CDEEmbedder(BaseEmbedder):
             query,
             prompt_name="query",
             dataset_embeddings=self.dataset_embeddings,
-            convert_to_numpy=True
+            convert_to_numpy=True,
         )
         ids = self.collection.query(query_embeddings=[query_embedding], n_results=k)[
             "ids"
