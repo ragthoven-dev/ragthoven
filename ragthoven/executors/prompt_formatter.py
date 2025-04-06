@@ -84,6 +84,8 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
                 for i in ids
             ]
 
+            passage_all_values = [self.training_dataset[i] for i in ids]
+
             # Change label ids to (numerical index)
             if (
                 len(config.training_data.textual_labels) > 0
@@ -101,7 +103,11 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
                     examples += f"text: {texts[idx]}\nlabel:{labels_textual[idx]}\n\n"
             else:
                 examples_enumerated = [
-                    {"text": texts[i], "label": labels_textual[i]}
+                    {
+                        "text": texts[i],
+                        "label": labels_textual[i],
+                        "data": passage_all_values[i],
+                    }
                     for i in range(len(texts))
                 ]
                 examples = self.examples_template.render(examples=examples_enumerated)

@@ -209,6 +209,7 @@ A full example can be seen below:
     training_size_limit: 20
     model: "sentence-transformers/all-MiniLM-L6-v2"
     embedder: "sbert"
+    device: "cpu"
     docs_embedding_count: 512
   ```
 
@@ -218,6 +219,7 @@ A full example can be seen below:
   - `model` - (Optional) choose model for reranking. Basic reranker utilizes [FlashRank](https://github.com/PrithivirajDamodaran/FlashRank/), which you can consult for more details on available models. *Matrixable*, specify models in an array.
 A full example can be seen below:
   - `embedder` - currently there are two embedding methods available, `sbert` which utilizes `sentence-transformers` models supported by `Chromadb` and `cde` which can use `Contextual Document Embeddings (CDE)` models, eg. `jxm/cde-small-v1`. In both cases `chromadb` is used as vector database.
+  - `device` - when utilizing `sbert` as embedder, this option allows for setting the device used in the embedding computation (eg. `cuda`, defaults to `cpu`)
   - `docs_embedding_count` - used only in `cde` mode. Number of documents to use for creating dataset embeddings. Randomly sampled. See [https://huggingface.co/jxm/cde-small-v1](https://huggingface.co/jxm/cde-small-v1) for more information. When `docs_embedding_count` > `training_size_limit` then `docs_embedding_count` = `training_size_limit`. 
 
   ```yaml
@@ -229,7 +231,7 @@ A full example can be seen below:
 - At the heart of RAGthoven, there is always a call to an LLM API, be it local or commercial.
   - `model` - which model to use. *Matrixable*, provide an array of models.
   - `temperature` - (Optional) - temperature for the models decoder. Defaults to `0`. *Matrixable*, provide array with temperature values.
-  - `examples` - (Optional) examples can be ordered, arranged and arbitrary textual information can be added.
+  - `examples` - (Optional) examples can be ordered, arranged and arbitrary textual information can be added. The `text` and `label` are as proved in configuration for the training dataset. Other than that, a variable `examples[i].data.feature`, where `feature` is a feature present in the original dataset allows for access of any feature for the given example.
 
   A full example can be seen below:
 

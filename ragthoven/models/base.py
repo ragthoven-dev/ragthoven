@@ -61,6 +61,7 @@ class Embed:
     )
     embedder: Optional[str] = EmbedderType.DEFAULT_CHROMA_EMBEDDER.value
     docs_embedding_count: Optional[int] = 10
+    device: Optional[str] | None = "cpu"
 
     def __post_init__(self):
         valid_options = [e.value for e in EmbedderType]
