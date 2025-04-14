@@ -31,7 +31,7 @@ class ChromaEmbedder(BaseEmbedder):
         self.embedding_limit = config.embed.training_size_limit
         self.chroma_client = chromadb.Client()
         self.em_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=config.embed.model
+            model_name=config.embed.model, device=config.embed.device
         )
 
         self.collection = self.chroma_client.create_collection(
