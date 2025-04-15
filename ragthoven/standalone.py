@@ -2,7 +2,7 @@ import hashlib
 from typing import Optional
 
 import typer
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from rich import print
 from typing_extensions import Annotated
 
@@ -20,7 +20,7 @@ from ragthoven.utils.config_loader import load_config
 app = typer.Typer()
 
 # Load (override defaults) environment variables from .env file
-load_dotenv(override=True)
+load_dotenv(find_dotenv(), override=True)
 
 
 @app.command()
