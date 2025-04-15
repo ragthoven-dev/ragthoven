@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ragthoven"
-version = "0.2.2"
+version = "0.2.3"
 description = ""
 authors = ["Gregor Karetka <karetka.gregor@gmail.com>", "Marek Suppa <marek@mareksuppa.com>", "Demetris Skottis <demetris.s@hotmail.com>"]
 readme = "README.md"
