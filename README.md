@@ -67,7 +67,7 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
     ```
 
 1. Set up the [LLM](https://docs.litellm.ai/docs/providers) by setting the correct environment variables.
-   For instance, you can set your OpenAI API token to `OPENAI_API_KEY` in your `.env` file (see [.env.sample](./.env.sample)).
+   For instance, you can set your OpenAI API token to `OPENAI_API_KEY` in your `.env` file (see [.env.sample](./.env.sample)) or use ollama by providing `OLLAMA_API_BASE`.
 
 ### Run the project
 1. First, follow the instructions in [Prepare the repository](#prepare-the-repository) section

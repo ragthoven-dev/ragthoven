@@ -1,19 +1,11 @@
 import hashlib
 
-import pytest
-from dotenv import load_dotenv
-
 from ragthoven import Ragthoven
 from ragthoven.executors.output_writer import JSONLOutputWriter, SupportedOutputFormats
 from ragthoven.models.base import Config
 from ragthoven.models.iter_matrix import IterationMatrix
 from ragthoven.utils import stringify_obj, stringify_obj_beautiful
-from ragthoven.utils.config_loader import load_config
-
-
-@pytest.fixture(scope="session")
-def setup_env():
-    load_dotenv(override=True)
+from ragthoven.test import load_config, setup_env
 
 
 def run_with_cfg(cfg_path: str):
