@@ -1,10 +1,9 @@
 from ragthoven import Ragthoven
 from ragthoven.executors.preprocessor import DataPreprocessor
-from ragthoven.test.test_intensive import setup_env
-from ragthoven.utils.config_loader import load_config
+from ragthoven.test import load_config
 
 
-def test_config_single_shot_example(setup_env):
+def test_config_single_shot_example():
     cfg_path = "ragthoven/test/test_config/single-shot-example-preprocessor.yaml"
     config = load_config(cfg_path)
 
