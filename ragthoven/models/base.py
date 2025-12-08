@@ -106,6 +106,13 @@ class LLM:
 
 
 @dataclass
+class Iterative:
+    enabled: bool = False
+    max_iterations: int = 5
+    tools: Optional[list[dict | str]] = None
+
+
+@dataclass
 class Config:
     name: str
     training_data: TrainingData | None
@@ -115,3 +122,4 @@ class Config:
     rerank: Rerank | None
     llm: LLM
     preprocessor: Preprocessor | None
+    iterative: Optional[Iterative] = None

@@ -344,6 +344,8 @@ Note that the LLM does not actually perform the function call - it merely notes 
 1. If you set `llm.messages: true` in the config, then the results of the function call will be forwarded to the LLM in any api call to the LLM for any future prompts (for the current validation example). The messages are passed along as part of the array of messages which contain the whole conversation, that the LLM API accepts.
 2. If you set `llm.messages: false` in the config, then no messages array is passed to the LLM and the results of the function call can be used manually in a subsequent prompt to the LLM. You need to specify in the yaml config where they will be used inside a prompt.
 
+When registering tools, always include the filename/module prefix so RAGthoven can import them, e.g. `reasoning_tools.Calculator` instead of just `Calculator`.
+
 Please refer to code [`ragthoven/tools/example_fun_calling.py`](ragthoven/tools/example_fun_calling.py) on how to write functions for function calling. Also, in order to use function calling, please use multiprompt in your yaml config (example: [`config/single-shot-example-function-calling.yaml`](config/single-shot-example-function-calling.yaml)). In order to use this example please install `wikipedia` package:
 
 ```yaml
@@ -375,6 +377,24 @@ llm:
         Please obtain a summary of this movie.
     ...
 ```
+
+#### Iterative tool loop
+You can let the model iteratively call tools until it converges. Enable this with the `iterative` block in your config; tools must be specified with their module prefix:
+
+```yaml
+iterative:
+  enabled: true
+  max_iterations: 10
+  tools:
+    - name: "reasoning_tools.Calculator"
+```
+
+How it works:
+- Runs before other prompt modes; the model sees the tool schemas and can call them in a loop up to `max_iterations`.
+- Each turn: LLM responds; if it includes tool calls, they are executed, results are appended to the message history, and the loop continues. If no tool call is returned, that message is the final answer.
+- Tools are fresh per validation example (state resets each example, persists within its loop). Errors are returned as tool output so the LLM can recover.
+- Dependency injection: tools declare `requires` (e.g., `prompt_executor`, `embedder`, `reranker`); these are injected automatically when instantiating the tool.
+- Bundled examples: `reasoning_tools.Calculator` (deterministic math), `reasoning_tools.SelfVerification` (sub‑agent LLM using `prompt_executor`), `reasoning_tools.DynamicRetrieval` (uses embedder/reranker).
 
 
 ## Tests

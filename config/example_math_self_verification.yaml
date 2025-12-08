@@ -1,0 +1,34 @@
+name: "example_math_self_verification"
+training_data: null
+
+validation_data:
+  input_feature: expression
+  split_name: train
+  dataset: "csv:./ragthoven/test/test_data/math_expressions.csv"
+
+results:
+  output_filename: "math_calc_self_verification_results"
+
+embed: null
+rerank: null
+
+llm:
+  model: "azure/gpt-4o-mini"
+  sprompt: |
+    You are a very hesitant math teacher. You are cautious and you make sure your answer is correct
+    by always doing self verification, even when you got the answer from the calculator and you are 100%
+    sure it's correct. The claculators you have at hand are not reliable so use them multiple times at least.
+    After having multple ansers you do self verification to be really sure the results are correct.
+  uprompt: |
+    Please solve this math problem: {{ text }}
+  tools: null
+  temperature: 0
+
+preprocessor: null
+
+iterative:
+  enabled: true
+  max_iterations: 10
+  tools:
+    - name: "reasoning_tools.Calculator"
+    - name: "reasoning_tools.SelfVerification"

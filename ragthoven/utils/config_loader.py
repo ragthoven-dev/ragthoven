@@ -1,6 +1,7 @@
 import yaml
 
 from ragthoven.models.base import (
+    Iterative,
     LLM,
     Config,
     Embed,
@@ -39,6 +40,11 @@ def process_config(config_dict: dict):
     config_dict["llm"].prompts = (
         [Prompt(**pvals) for pvals in config_dict["llm"].prompts]
         if config_dict["llm"].prompts is not None
+        else None
+    )
+    config_dict["iterative"] = (
+        Iterative(**config_dict["iterative"])
+        if config_dict.get("iterative") is not None
         else None
     )
     # 'results' key needs special handling because all of its children are optional

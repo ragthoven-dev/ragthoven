@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -24,7 +26,9 @@ from ragthoven.executors.prompt_formatter import (
 )
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
+from ragthoven.tools.reasoning_tools import ReturnResultWrapper
 from ragthoven.utils.dataset_loader import dataset_load
+from ragthoven.utils import get_class, get_class_func_name_only
 
 logger = logging.getLogger()
 logger.propagate = False
@@ -135,6 +139,140 @@ class Ragthoven:
             self.output_write = JSONLOutputWriter(output_file, self.config)
         else:
             self.output_write = output_write
+
+    def _instantiate_tools(self, tool_configs):
+        """
+        Instantiate tools defined in config.iterative.tools with dependency injection.
+        """
+        tools = {}
+        if tool_configs is None:
+            return tools
+
+        available_deps = {
+            "prompt_executor": self.pexecutor,
+            "embedder": self.embedder,
+            "reranker": self.reranker,
+        }
+
+        for cfg in tool_configs:
+            if isinstance(cfg, dict):
+                name = cfg.get("name")
+                model_override = cfg.get("model")
+            else:
+                name = cfg
+                model_override = None
+
+            if name is None:
+                raise ValueError("Tool configuration is missing 'name'")
+
+            if "." not in name:
+                raise ValueError(
+                    "Tool name must include its module prefix, e.g. 'reasoning_tools.Calculator'"
+                )
+            class_name = get_class_func_name_only(name)
+            cls = get_class("ragthoven.tools", name)
+            requires = getattr(cls, "requires", [])
+            kwargs = {}
+            for dep in requires:
+                if dep not in available_deps:
+                    raise ValueError(f"Unsupported dependency requested: {dep}")
+                kwargs[dep] = available_deps[dep]
+            if model_override is not None:
+                kwargs["model_override"] = model_override
+
+            tools[class_name] = cls(**kwargs)
+
+        return tools
+
+    def _get_tool_schemas(self, tools: dict):
+        return [tool.get_json_schema() for tool in tools.values()]
+
+    def _execute_tool(self, tool_call, tools: dict):
+        try:
+            tool = tools[tool_call.function.name]
+        except KeyError:
+            return f"ERROR: Unknown tool '{tool_call.function.name}'"
+
+        try:
+            args = json.loads(tool_call.function.arguments)
+        except Exception as exc:
+            return f"ERROR: InvalidArguments: {exc}"
+
+        print(
+            f"[RAGTHOVEN][TOOL] call={tool_call.function.name} args={args}"
+        )
+
+        try:
+            result = tool(args)
+            print(f"[RAGTHOVEN][TOOL] result={result}")
+
+            # When the ReturnResult tool is invoked, record the final answer so the loop can stop.
+            if tool_call.function.name == "ReturnResult":
+                return result
+
+            return result
+        except Exception as exc:
+            print(f"[RAGTHOVEN][TOOL] error={type(exc).__name__}: {exc}")
+            return f"ERROR: {type(exc).__name__}: {exc}"
+
+    def execute_iterative_loop(self, i, text, all_features):
+        """
+        Iterative execution mode: let the LLM call tools in a loop until it stops.
+        """
+        self._iterative_final_result = None
+        tool_cfgs = []
+        if self.config.iterative and self.config.iterative.tools:
+            tool_cfgs = list(self.config.iterative.tools)
+        tool_cfgs.append("reasoning_tools.ReturnResult")
+
+        tools = self._instantiate_tools(tool_cfgs if self.config.iterative else None)
+        max_iter = (
+            self.config.iterative.max_iterations
+            if self.config.iterative is not None
+            else 1
+        )
+        
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+
+        sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
+        messages = [
+            { "role": "system", "content": sprompt },
+            { "role": "user", "content": uprompt },
+        ]
+
+        last_message = None
+        for _ in range(max_iter):
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=self._get_tool_schemas(tools)
+            )
+
+            if response == self.config.results.bad_request_default_value:
+                return str(self.config.results.bad_request_default_value)
+
+            last_message = response.choices[0].message
+
+            if not last_message.tool_calls:
+                return last_message.content
+
+            messages.append(last_message)
+
+            for tool_call in last_message.tool_calls:
+                result = self._execute_tool(tool_call, tools)
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result,
+                    }
+                )
+
+                if isinstance(result, ReturnResultWrapper):
+                    return str(result.result)
+
+        # Return the last assistant content as a fallback if max_iter reached
+        return last_message.content if last_message else None
 
     def execute_single_prompt(self, i, text, all_features):
         examples = self.pformater.build_examples(
@@ -301,7 +439,9 @@ class Ragthoven:
             all_features = self.data_preprocessor.preprocess(all_features)
 
         pres = None
-        if self.config.llm.prompts is not None:
+        if self.config.iterative is not None and self.config.iterative.enabled:
+            pres = self.execute_iterative_loop(index, text, all_features)
+        elif self.config.llm.prompts is not None:
             use_messages = self.config.llm.messages
             if use_messages:
                 pres = self.execute_messages_prompts(index, text, all_features)

@@ -1,4 +1,7 @@
 class BaseFunCalling:
+    # Dependencies that should be injected on instantiation (e.g. prompt_executor)
+    requires: list[str] = []
+
     def __init__(self) -> None:
         self._type = "function"
         self.name = "empty"
