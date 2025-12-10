@@ -210,11 +210,15 @@ class Ragthoven:
         except Exception as exc:
             return f"ERROR: InvalidArguments: {exc}"
 
-        print(f"[RAGTHOVEN][TOOL] call={tool_call.function.name} args={args}")
+        logger.info(
+            "[RAGTHOVEN][TOOL] call=%s args=%s",
+            tool_call.function.name,
+            args,
+        )
 
         try:
             result = tool(args)
-            print(f"[RAGTHOVEN][TOOL] result={result}")
+            logger.info("[RAGTHOVEN][TOOL] result=%s", result)
 
             # When the ReturnResult tool is invoked, record the final answer so the loop can stop.
             if tool_call.function.name == ReturnResult.__name__:
@@ -222,19 +226,26 @@ class Ragthoven:
 
             return result
         except Exception as exc:
-            print(f"[RAGTHOVEN][TOOL] error={type(exc).__name__}: {exc}")
+            logger.error(
+                "[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc
+            )
             return f"ERROR: {type(exc).__name__}: {exc}"
 
-    def execute_iterative_loop(self, i, text, all_features):
+    def execute_iterative_loop(self, i, text, all_features) -> str | None:
         """
         Iterative execution mode: let the LLM call tools in a loop until it stops.
         """
-        tool_cfgs = []
-        if self.config.iterative and self.config.iterative.tools:
-            tool_cfgs = list(self.config.iterative.tools)
+        if not self.config.iterative:
+            raise ValueError("Iterative config must be provided to execute_iterative_loop")
+
+        tool_cfgs = (
+            list(self.config.iterative.tools)
+            if self.config.iterative and self.config.iterative.tools
+            else []
+        )
         tool_cfgs.append(ReturnResult)
 
-        tools = self._instantiate_tools(tool_cfgs if self.config.iterative else None)
+        tools = self._instantiate_tools(tool_cfgs)
         max_iter = (
             self.config.iterative.max_iterations
             if self.config.iterative is not None

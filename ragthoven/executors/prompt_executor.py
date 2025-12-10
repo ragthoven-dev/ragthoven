@@ -1,5 +1,6 @@
 import abc
 import json
+import logging
 import os
 
 import litellm
@@ -7,6 +8,9 @@ import litellm
 from ragthoven.models.base import Config
 from ragthoven.tools import BaseFunCalling
 from ragthoven.utils import get_class, get_class_func_name_only
+
+
+logger = logging.getLogger(__name__)
 
 
 class BasePromptExecutor(metaclass=abc.ABCMeta):
@@ -64,7 +68,7 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
             )
             return response
         except litellm.BadRequestError as e:
-            print(f"What went wrong??? {e}")
+            logger.error("LLM completion bad request: %s", e)
         except Exception as e:
             # Surface any other failure so callers/tests do not silently succeed.
             raise
