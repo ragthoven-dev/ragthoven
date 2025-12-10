@@ -1,4 +1,6 @@
 .env
+.DS_Store
+dist/
 .pytest_cache
 test_output
 **__pycache__**

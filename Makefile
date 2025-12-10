@@ -24,7 +24,9 @@ test-preproc:
 
 test-iterative:
 	PYTHONPATH=ragthoven && \
-	poetry run pytest ragthoven/test/test_iterative.py
+	poetry run pytest ragthoven/test/test_iterative.py && \
+	mv math_calc_results* test_output && \
+	mv math_calc_self_verification_results.* test_output
 
 clean:
 	rm -rf test_output/* && \

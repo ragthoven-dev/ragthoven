@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import json
 from typing import Any
 
+from ragthoven.executors.prompt_executor import BasePromptExecutor
 from ragthoven.tools import BaseFunCalling
 
 
@@ -77,7 +78,9 @@ class SelfVerification(BaseFunCalling):
 
     requires: list[str] = ["prompt_executor"]
 
-    def __init__(self, prompt_executor, model_override: str | None = None) -> None:
+    def __init__(
+        self, prompt_executor: BasePromptExecutor, model_override: str | None = None
+    ) -> None:
         super().__init__()
         self.prompt_executor = prompt_executor
         self.model_override = model_override

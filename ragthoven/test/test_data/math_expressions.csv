@@ -2,4 +2,4 @@ expression,expected
 "Alice has 5 apples, Bob has 3 apples. How many apples do they have together?",8
 "Sarah has 12 candies and buys 3 more. How many candies does she have now?",15
 "How much is 34.5986 degree F in degree C rounded to 4 decimal palces?",1.4437
-"What is 12 to the power of 7 minus 87 plus 32",35831808
+"What is 12 to the power of 7 minus 87 plus 32",35831753

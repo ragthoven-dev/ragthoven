@@ -1,7 +1,6 @@
+import inspect
 import json
 import logging
-import os
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -26,7 +25,7 @@ from ragthoven.executors.prompt_formatter import (
 )
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
-from ragthoven.tools.reasoning_tools import ReturnResultWrapper
+from ragthoven.tools.reasoning_tools import ReturnResult, ReturnResultWrapper
 from ragthoven.utils.dataset_loader import dataset_load
 from ragthoven.utils import get_class, get_class_func_name_only
 
@@ -155,12 +154,18 @@ class Ragthoven:
         }
 
         for cfg in tool_configs:
+            model_override = None
+            cls = None
+
             if isinstance(cfg, dict):
                 name = cfg.get("name")
                 model_override = cfg.get("model")
+            elif inspect.isclass(cfg):
+                cls = cfg
+                # Normalize to the dotted path expected by get_class
+                name = f"{cls.__module__.split('ragthoven.tools.', 1)[-1]}.{cls.__name__}"
             else:
                 name = cfg
-                model_override = None
 
             if name is None:
                 raise ValueError("Tool configuration is missing 'name'")
@@ -169,8 +174,13 @@ class Ragthoven:
                 raise ValueError(
                     "Tool name must include its module prefix, e.g. 'reasoning_tools.Calculator'"
                 )
-            class_name = get_class_func_name_only(name)
-            cls = get_class("ragthoven.tools", name)
+
+            if cls is None:
+                cls = get_class("ragthoven.tools", name)
+                class_name = get_class_func_name_only(name)
+            else:
+                class_name = cls.__name__
+
             requires = getattr(cls, "requires", [])
             kwargs = {}
             for dep in requires:
@@ -207,7 +217,7 @@ class Ragthoven:
             print(f"[RAGTHOVEN][TOOL] result={result}")
 
             # When the ReturnResult tool is invoked, record the final answer so the loop can stop.
-            if tool_call.function.name == "ReturnResult":
+            if tool_call.function.name == ReturnResult.__name__:
                 return result
 
             return result
@@ -219,11 +229,10 @@ class Ragthoven:
         """
         Iterative execution mode: let the LLM call tools in a loop until it stops.
         """
-        self._iterative_final_result = None
         tool_cfgs = []
         if self.config.iterative and self.config.iterative.tools:
             tool_cfgs = list(self.config.iterative.tools)
-        tool_cfgs.append("reasoning_tools.ReturnResult")
+        tool_cfgs.append(ReturnResult)
 
         tools = self._instantiate_tools(tool_cfgs if self.config.iterative else None)
         max_iter = (
@@ -238,8 +247,8 @@ class Ragthoven:
 
         sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
         messages = [
-            { "role": "system", "content": sprompt },
-            { "role": "user", "content": uprompt },
+            {"role": "system", "content": sprompt},
+            {"role": "user", "content": uprompt},
         ]
 
         last_message = None
