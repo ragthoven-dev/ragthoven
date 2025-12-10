@@ -2,7 +2,7 @@ import hashlib
 from typing import Optional
 
 import typer
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 from rich import print
 from typing_extensions import Annotated
 

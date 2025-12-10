@@ -26,8 +26,8 @@ from ragthoven.executors.prompt_formatter import (
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
 from ragthoven.tools.reasoning_tools import ReturnResult, ReturnResultWrapper
-from ragthoven.utils.dataset_loader import dataset_load
 from ragthoven.utils import get_class, get_class_func_name_only
+from ragthoven.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
 logger.propagate = False
@@ -163,7 +163,9 @@ class Ragthoven:
             elif inspect.isclass(cfg):
                 cls = cfg
                 # Normalize to the dotted path expected by get_class
-                name = f"{cls.__module__.split('ragthoven.tools.', 1)[-1]}.{cls.__name__}"
+                name = (
+                    f"{cls.__module__.split('ragthoven.tools.', 1)[-1]}.{cls.__name__}"
+                )
             else:
                 name = cfg
 
@@ -208,9 +210,7 @@ class Ragthoven:
         except Exception as exc:
             return f"ERROR: InvalidArguments: {exc}"
 
-        print(
-            f"[RAGTHOVEN][TOOL] call={tool_call.function.name} args={args}"
-        )
+        print(f"[RAGTHOVEN][TOOL] call={tool_call.function.name} args={args}")
 
         try:
             result = tool(args)
@@ -240,7 +240,7 @@ class Ragthoven:
             if self.config.iterative is not None
             else 1
         )
-        
+
         examples = self.pformater.build_examples(
             text, self.embedder, self.reranker, self.config
         )

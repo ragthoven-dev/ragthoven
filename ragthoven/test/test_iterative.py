@@ -86,7 +86,9 @@ def _assert_predictions_match(cfg_path: str):
 
 
 def test_iterative_math_plus_self_verification():
-    _assert_predictions_match("ragthoven/test/test_config/example_math_self_verification.yaml")
+    _assert_predictions_match(
+        "ragthoven/test/test_config/example_math_self_verification.yaml"
+    )
 
 
 def test_iterative_math_run_produces_jsonl():

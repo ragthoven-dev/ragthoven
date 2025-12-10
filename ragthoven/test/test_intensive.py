@@ -4,8 +4,8 @@ from ragthoven import Ragthoven
 from ragthoven.executors.output_writer import JSONLOutputWriter, SupportedOutputFormats
 from ragthoven.models.base import Config
 from ragthoven.models.iter_matrix import IterationMatrix
-from ragthoven.utils import stringify_obj, stringify_obj_beautiful
 from ragthoven.test import load_config, setup_env
+from ragthoven.utils import stringify_obj, stringify_obj_beautiful
 
 
 def run_with_cfg(cfg_path: str, max_validation: int | None = 2):

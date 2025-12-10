@@ -1,6 +1,6 @@
 import ast
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Any
 
 from ragthoven.executors.prompt_executor import BasePromptExecutor
@@ -85,7 +85,9 @@ class SelfVerification(BaseFunCalling):
         self.prompt_executor = prompt_executor
         self.model_override = model_override
         self.name = type(self).__name__
-        self.description = "Verify a claim for correctness. Replies with VERDICT: VALID or INVALID."
+        self.description = (
+            "Verify a claim for correctness. Replies with VERDICT: VALID or INVALID."
+        )
         self.parameters = {
             "type": "object",
             "properties": {
@@ -104,7 +106,10 @@ class SelfVerification(BaseFunCalling):
         user_prompt = f"Claim: {args['claim']}\nReasoning: {args['reasoning']}"
 
         response = self.prompt_executor.get_messages_prompt_results(
-            [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
             tools=None,
             model=self.model_override,
         )
@@ -114,9 +119,11 @@ class SelfVerification(BaseFunCalling):
 
         return response.choices[0].message.content
 
+
 @dataclass
 class ReturnResultWrapper:
     result: str
+
 
 class ReturnResult(BaseFunCalling):
     """Signal the final answer for the current example."""
