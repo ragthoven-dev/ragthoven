@@ -23,6 +23,7 @@ test-preproc:
 	mv results.jsonl test_output
 
 test-iterative:
+	mkdir -p test_output && \
 	PYTHONPATH=ragthoven && \
 	poetry run pytest ragthoven/test/test_iterative.py && \
 	mv math_calc_results* test_output && \

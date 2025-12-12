@@ -78,11 +78,15 @@ class SelfVerification(BaseFunCalling):
     requires: list[str] = ["prompt_executor"]
 
     def __init__(
-        self, prompt_executor: BasePromptExecutor, model_override: str | None = None
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
     ) -> None:
         super().__init__()
         self.prompt_executor = prompt_executor
         self.model_override = model_override
+        self.llm_overrides = llm_overrides
         self.name = type(self).__name__
         self.description = (
             "Verify a claim for correctness. Replies with VERDICT: VALID or INVALID."
@@ -111,6 +115,7 @@ class SelfVerification(BaseFunCalling):
             ],
             tools=None,
             model=self.model_override,
+            llm_overrides=self.llm_overrides,
         )
 
         if response is None or getattr(response, "choices", None) is None:

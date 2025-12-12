@@ -394,7 +394,7 @@ How it works:
 - Each turn: LLM responds; if it includes tool calls, they are executed, results are appended to the message history, and the loop continues. If no tool call is returned, that message is the final answer.
 - Tools are fresh per validation example (state resets each example, persists within its loop). Errors are returned as tool output so the LLM can recover.
 - Dependency injection: tools declare `requires` (e.g., `prompt_executor`, `embedder`, `reranker`); these are injected automatically when instantiating the tool.
-- Bundled examples: `reasoning_tools.Calculator` (deterministic math), `reasoning_tools.SelfVerification` (sub‑agent LLM using `prompt_executor`), `reasoning_tools.DynamicRetrieval` (uses embedder/reranker).
+- Bundled examples: `reasoning_tools.Calculator` (deterministic math), `reasoning_tools.SelfVerification` (sub‑agent LLM using `prompt_executor`).
 
 
 ## Tests

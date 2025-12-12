@@ -1,7 +1,6 @@
 import abc
 import json
 import logging
-import os
 
 import litellm
 
@@ -53,18 +52,34 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
 
         return to_model_tools
 
-    def get_messages_prompt_results(self, messages, tools, model=None):
+    def get_messages_prompt_results(
+        self, messages, tools, model=None, llm_overrides: dict | None = None
+    ):
         from litellm import completion
 
         to_model_tools = self.get_tools(tools)
         response = None
 
+        # Apply per-call overrides for model/base_url/temperature
+        model_params = dict(self.model_params)
+        if llm_overrides is not None:
+            if "base_url" in llm_overrides:
+                model_params["base_url"] = llm_overrides["base_url"]
+            if "temperature" in llm_overrides:
+                model_params["temperature"] = llm_overrides["temperature"]
+
+        model_to_use = (
+            llm_overrides.get("model")
+            if llm_overrides and llm_overrides.get("model") is not None
+            else model
+        ) or self.config.llm.model
+
         try:
             response = completion(
-                model=model if model is not None else self.config.llm.model,
+                model=model_to_use,
                 messages=messages,
                 tools=to_model_tools,
-                **self.model_params,
+                **model_params,
             )
             return response
         except litellm.BadRequestError as e:

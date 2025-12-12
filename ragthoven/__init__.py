@@ -155,11 +155,15 @@ class Ragthoven:
 
         for cfg in tool_configs:
             model_override = None
+            llm_overrides = {}
             cls = None
 
             if isinstance(cfg, dict):
                 name = cfg.get("name")
                 model_override = cfg.get("model")
+                for key in ("model", "base_url", "temperature"):
+                    if cfg.get(key) is not None:
+                        llm_overrides[key] = cfg.get(key)
             elif inspect.isclass(cfg):
                 cls = cfg
                 # Normalize to the dotted path expected by get_class
@@ -188,9 +192,15 @@ class Ragthoven:
             for dep in requires:
                 if dep not in available_deps:
                     raise ValueError(f"Unsupported dependency requested: {dep}")
+                if available_deps[dep] is None:
+                    raise ValueError(
+                        f"Tool '{class_name}' requires '{dep}' but it is not configured."
+                    )
                 kwargs[dep] = available_deps[dep]
             if model_override is not None:
                 kwargs["model_override"] = model_override
+            if llm_overrides:
+                kwargs["llm_overrides"] = llm_overrides
 
             tools[class_name] = cls(**kwargs)
 
@@ -231,7 +241,7 @@ class Ragthoven:
             )
             return f"ERROR: {type(exc).__name__}: {exc}"
 
-    def execute_iterative_loop(self, i, text, all_features) -> str | None:
+    def execute_iterative_loop(self, _, text, all_features) -> str | None:
         """
         Iterative execution mode: let the LLM call tools in a loop until it stops.
         """
@@ -263,6 +273,7 @@ class Ragthoven:
         ]
 
         last_message = None
+        last_tool_result = None
         for _ in range(max_iter):
             response = self.pexecutor.get_messages_prompt_results(
                 messages, tools=self._get_tool_schemas(tools)
@@ -280,19 +291,24 @@ class Ragthoven:
 
             for tool_call in last_message.tool_calls:
                 result = self._execute_tool(tool_call, tools)
+                if isinstance(result, ReturnResultWrapper):
+                    return str(result.result)
+                last_tool_result = result
+
                 messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
-                        "content": result,
+                        "content": result if isinstance(result, str) else str(result),
                     }
                 )
 
-                if isinstance(result, ReturnResultWrapper):
-                    return str(result.result)
-
         # Return the last assistant content as a fallback if max_iter reached
-        return last_message.content if last_message else None
+        if last_message and last_message.content:
+            return last_message.content
+        if last_tool_result is not None:
+            return str(last_tool_result)
+        return "ERROR: MaxIterationsExceeded"
 
     def execute_single_prompt(self, i, text, all_features):
         examples = self.pformater.build_examples(

@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 
+import pytest
+
 from ragthoven.models.iter_matrix import IterationMatrix
 from ragthoven.test import load_config
 from ragthoven.test.test_intensive import run_with_cfg
