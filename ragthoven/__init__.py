@@ -202,7 +202,20 @@ class Ragthoven:
             if llm_overrides:
                 kwargs["llm_overrides"] = llm_overrides
 
-            tools[class_name] = cls(**kwargs)
+            # Only pass kwargs that the tool __init__ accepts (or **kwargs), to avoid crashes
+            sig = inspect.signature(cls.__init__)
+            params = sig.parameters
+            accepts_kwargs = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            filtered_kwargs = kwargs
+            if not accepts_kwargs:
+                filtered_kwargs = {
+                    k: v for k, v in kwargs.items() if k in params and k != "self"
+                }
+
+            instance = cls(**filtered_kwargs)
+            tools[instance.name] = instance
 
         return tools
 
@@ -280,7 +293,8 @@ class Ragthoven:
             )
 
             if response == self.config.results.bad_request_default_value:
-                return str(self.config.results.bad_request_default_value)
+                logger.error("LLM completion returned bad_request_default_value")
+                return "ERROR: BadRequest"
 
             last_message = response.choices[0].message
 

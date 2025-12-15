@@ -118,10 +118,15 @@ class SelfVerification(BaseFunCalling):
             llm_overrides=self.llm_overrides,
         )
 
-        if response is None or getattr(response, "choices", None) is None:
+        if (
+            response is None
+            or not getattr(response, "choices", None)
+            or len(response.choices) == 0
+        ):
             return "ERROR: No response from verification model"
 
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        return content if content else "ERROR: Empty response"
 
 
 @dataclass
