@@ -2,8 +2,8 @@ import csv
 import hashlib
 import json
 import math
-from pathlib import Path
 import re
+from pathlib import Path
 
 from ragthoven.models.iter_matrix import IterationMatrix
 from ragthoven.test import load_config
@@ -12,7 +12,7 @@ from ragthoven.utils import stringify_obj
 
 
 def _coerce_number(value: str):
-    all_numbers = re.findall(r'([+-]?[0-9]*[.]?[0-9]+)', value)
+    all_numbers = re.findall(r"([+-]?[0-9]*[.]?[0-9]+)", value)
 
     if len(all_numbers) == 0:
         return value

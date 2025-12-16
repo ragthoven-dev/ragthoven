@@ -9,7 +9,6 @@ from ragthoven.models.base import Config
 from ragthoven.tools import BaseFunCalling
 from ragthoven.utils import get_class, get_class_func_name_only
 
-
 logger = logging.getLogger(__name__)
 
 

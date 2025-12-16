@@ -270,9 +270,7 @@ class Ragthoven:
 
             return result
         except Exception as exc:
-            logger.error(
-                "[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc
-            )
+            logger.error("[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc)
             return f"ERROR: {type(exc).__name__}: {exc}"
 
     def execute_iterative_loop(self, _, text, all_features) -> str | None:
@@ -280,7 +278,9 @@ class Ragthoven:
         Iterative execution mode: let the LLM call tools in a loop until it stops.
         """
         if not self.config.iterative:
-            raise ValueError("Iterative config must be provided to execute_iterative_loop")
+            raise ValueError(
+                "Iterative config must be provided to execute_iterative_loop"
+            )
 
         tool_cfgs = (
             list(self.config.iterative.tools)
