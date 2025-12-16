@@ -40,7 +40,7 @@ class BaseExamplePromptFormatter(BasePromptFormatter):
         self.examples_cache = None
         self.examples_cache_id = None
 
-    def set_prompts(self, prompts: dict[str, Prompt] | dict[str, str]):
+    def set_prompts(self, prompts: list[str] | list[Prompt] | None):
         from jinja2 import Template
 
         self.prompt_templates = {}

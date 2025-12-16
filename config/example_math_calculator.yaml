@@ -1,0 +1,30 @@
+name: "example_math_calculator"
+training_data: null
+
+validation_data:
+  input_feature: expression
+  split_name: train
+  dataset: "csv:./ragthoven/test/test_data/math_expressions.csv"
+
+results:
+  output_filename: "math_calc_results"
+
+embed: null
+rerank: null
+
+llm:
+  model: "azure/gpt-4o-mini"
+  sprompt: |
+    You are the best mathematics solver.
+  uprompt: |
+    Please solve this math problem: {{ text }}
+  tools: null
+  temperature: 0
+
+preprocessor: null
+
+iterative:
+  enabled: true
+  max_iterations: 10
+  tools:
+    - name: "reasoning_tools.Calculator"

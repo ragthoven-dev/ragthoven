@@ -4,11 +4,11 @@ from ragthoven import Ragthoven
 from ragthoven.executors.output_writer import JSONLOutputWriter, SupportedOutputFormats
 from ragthoven.models.base import Config
 from ragthoven.models.iter_matrix import IterationMatrix
-from ragthoven.utils import stringify_obj, stringify_obj_beautiful
 from ragthoven.test import load_config, setup_env
+from ragthoven.utils import stringify_obj, stringify_obj_beautiful
 
 
-def run_with_cfg(cfg_path: str):
+def run_with_cfg(cfg_path: str, max_validation: int | None = 2):
     config = load_config(cfg_path)
 
     # Mocking the data
@@ -46,7 +46,8 @@ def run_with_cfg(cfg_path: str):
         if r.train_dataset is not None:
             r.train_dataset = r.train_dataset.select(range(20))
 
-        r.validation_dataset = r.validation_dataset.select(range(2))
+        if max_validation is not None:
+            r.validation_dataset = r.validation_dataset.select(range(max_validation))
         r.execute()
         cont = iter_matrix.inc()
 

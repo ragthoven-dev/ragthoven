@@ -22,6 +22,13 @@ test-preproc:
 	poetry run pytest ragthoven/test -k "test_preprocessor" && \
 	mv results.jsonl test_output
 
+test-iterative:
+	mkdir -p test_output && \
+	PYTHONPATH=ragthoven && \
+	poetry run pytest ragthoven/test/test_iterative.py && \
+	mv math_calc_results* test_output && \
+	mv math_calc_self_verification_results.* test_output
+
 clean:
 	rm -rf test_output/* && \
 	rm -rf .pytest_cache
@@ -30,3 +37,4 @@ test:
 	make test-fast
 	make test-intensive
 	make test-preproc
+	make test-iterative

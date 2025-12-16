@@ -1,11 +1,15 @@
 import abc
 import json
+import logging
 
 import litellm
 
+from ragthoven.constants import LLM_OVERRIDE_KEYS
 from ragthoven.models.base import Config
 from ragthoven.tools import BaseFunCalling
 from ragthoven.utils import get_class, get_class_func_name_only
+
+logger = logging.getLogger(__name__)
 
 
 class BasePromptExecutor(metaclass=abc.ABCMeta):
@@ -30,33 +34,60 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
                 self.available_tools[tool_name] = get_class("ragthoven.tools", tool)()
 
     def get_tools(self, tools):
+        """
+        Build list of tool schemas for the model. Accepts either list of tool
+        names (resolved from self.available_tools) or pre-built json schemas.
+        """
         to_model_tools = None
         if tools is not None:
             to_model_tools = []
             for tool in tools:
+                # Already formatted schema
+                if isinstance(tool, dict) and tool.get("type") is not None:
+                    to_model_tools.append(tool)
+                    continue
+
                 tool_class: BaseFunCalling = self.available_tools[tool]
                 to_model_tools.append(tool_class.get_json_schema())
 
         return to_model_tools
 
-    def get_messages_prompt_results(self, messages, tools):
+    def get_messages_prompt_results(
+        self, messages, tools, model=None, llm_overrides: dict | None = None
+    ):
         from litellm import completion
 
         to_model_tools = self.get_tools(tools)
         response = None
 
+        # Apply per-call overrides for model/base_url/temperature
+        model_params = dict(self.model_params)
+        if llm_overrides is not None:
+            for k, v in llm_overrides.items():
+                if k in LLM_OVERRIDE_KEYS:
+                    model_params[k] = v
+
+        model_to_use = (
+            llm_overrides.get("model")
+            if llm_overrides and llm_overrides.get("model") is not None
+            else model
+        ) or self.config.llm.model
+
         try:
             response = completion(
-                model=self.config.llm.model,
+                model=model_to_use,
                 messages=messages,
                 tools=to_model_tools,
-                **self.model_params,
+                **model_params,
             )
+            return response
         except litellm.BadRequestError as e:
-            print(f"What went wrong??? {e}")
-            return self.config.results.bad_request_default_value
+            logger.error("LLM completion bad request: %s", e)
+        except Exception as e:
+            # Surface any other failure so callers/tests do not silently succeed.
+            raise
 
-        return response
+        return self.config.results.bad_request_default_value
 
     def get_all_function_calls(self, tool_calls):
         resulting_calls = []
@@ -68,13 +99,13 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
                 resulting_calls.append((fn_to_call, function_result, tool_call.id))
         return resulting_calls
 
-    def get_prompt_results(self, sprompt, uprompt, tools=None):
+    def get_prompt_results(self, sprompt, uprompt, tools=None, model=None):
         messages = [
             {"content": sprompt, "role": "system"},
             {"content": uprompt, "role": "user"},
         ]
 
-        response = self.get_messages_prompt_results(messages, tools)
+        response = self.get_messages_prompt_results(messages, tools, model)
         if response == self.config.results.bad_request_default_value:
             return response
 

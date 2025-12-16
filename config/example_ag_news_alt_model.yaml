@@ -34,5 +34,5 @@ llm:
     Please determine the category of the article based of this heading:
     {{ text }}
 
-  model: "azure/gpt-4"
+  model: "azure/gpt-4o"
   temperature: 0

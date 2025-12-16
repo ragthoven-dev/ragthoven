@@ -1,11 +1,13 @@
+import inspect
 import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 
 import tqdm
 
-from ragthoven.constants import PROMPT_LOGGING
+from ragthoven.constants import LLM_OVERRIDE_KEYS, PROMPT_LOGGING
 from ragthoven.executors.cde_embedder import CDEEmbedder
 from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
 from ragthoven.executors.output_writer import (
@@ -24,11 +26,21 @@ from ragthoven.executors.prompt_formatter import (
 )
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
+from ragthoven.tools import ReturnResult, ReturnResultWrapper
+from ragthoven.utils import get_class
 from ragthoven.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
 logger.propagate = False
 logger.setLevel(logging.ERROR)
+
+
+@dataclass
+class ToolSpec:
+    name: str
+    cls: type | None
+    model_override: str | None
+    llm_overrides: dict
 
 
 class Ragthoven:
@@ -135,6 +147,203 @@ class Ragthoven:
             self.output_write = JSONLOutputWriter(output_file, self.config)
         else:
             self.output_write = output_write
+
+    @staticmethod
+    def _parse_tool_cfg(cfg) -> ToolSpec:
+        if isinstance(cfg, dict):
+            name = cfg.get("name")
+            return ToolSpec(
+                name=name,
+                cls=None,
+                model_override=cfg.get("model"),
+                llm_overrides={
+                    key: cfg.get(key)
+                    for key in LLM_OVERRIDE_KEYS
+                    if cfg.get(key) is not None
+                },
+            )
+
+        if inspect.isclass(cfg):
+            cls = cfg
+            dotted = f"{cls.__module__.removeprefix('ragthoven.tools.')}.{cls.__name__}"
+            return ToolSpec(name=dotted, cls=cls, model_override=None, llm_overrides={})
+
+        return ToolSpec(name=cfg, cls=None, model_override=None, llm_overrides={})
+
+    @staticmethod
+    def _filter_kwargs_for_init(cls, kwargs):
+        params = inspect.signature(cls.__init__).parameters
+        accepts_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+        )
+        if accepts_kwargs:
+            return kwargs
+        return {k: v for k, v in kwargs.items() if k in params and k != "self"}
+
+    def _instantiate_tools(self, tool_configs):
+        """
+        Instantiate tools from `config.iterative.tools` with dependency injection.
+
+        Accepts three config shapes per tool:
+        - dotted path string relative to `ragthoven.tools`
+        - class reference
+        - dict with `name` and optional LLM overrides: model/base_url/temperature
+        """
+        if not tool_configs:
+            return {}
+
+        tools = {}
+        available_deps = {
+            "prompt_executor": self.pexecutor,
+            "embedder": self.embedder,
+            "reranker": self.reranker,
+        }
+
+        for cfg in tool_configs:
+            spec = self._parse_tool_cfg(cfg)
+            name, cls, model_override, llm_overrides = (
+                spec.name,
+                spec.cls,
+                spec.model_override,
+                spec.llm_overrides,
+            )
+
+            if name is None:
+                raise ValueError("Tool configuration is missing 'name'")
+            if "." not in name:
+                raise ValueError(
+                    "Tool name must include its module prefix, e.g. 'reasoning_tools.Calculator'"
+                )
+
+            if cls is None:
+                cls = get_class("ragthoven.tools", name)
+            class_name = cls.__name__
+
+            kwargs = {}
+            for dep in getattr(cls, "requires", []):
+                if dep not in available_deps:
+                    raise ValueError(f"Unsupported dependency requested: {dep}")
+                if available_deps[dep] is None:
+                    raise ValueError(
+                        f"Tool '{class_name}' requires '{dep}' but it is not configured."
+                    )
+                kwargs[dep] = available_deps[dep]
+
+            if model_override is not None:
+                kwargs["model_override"] = model_override
+            if llm_overrides:
+                kwargs["llm_overrides"] = llm_overrides
+
+            filtered_kwargs = self._filter_kwargs_for_init(cls, kwargs)
+            instance = cls(**filtered_kwargs)
+            tools[instance.name] = instance
+
+        return tools
+
+    def _get_tool_schemas(self, tools: dict):
+        return [tool.get_json_schema() for tool in tools.values()]
+
+    def _execute_tool(self, tool_call, tools: dict):
+        try:
+            tool = tools[tool_call.function.name]
+        except KeyError:
+            return f"ERROR: Unknown tool '{tool_call.function.name}'"
+
+        try:
+            args = json.loads(tool_call.function.arguments)
+        except Exception as exc:
+            return f"ERROR: InvalidArguments: {exc}"
+
+        logger.info(
+            "[RAGTHOVEN][TOOL] call=%s args=%s",
+            tool_call.function.name,
+            args,
+        )
+
+        try:
+            result = tool(args)
+            logger.info("[RAGTHOVEN][TOOL] result=%s", result)
+
+            # When the ReturnResult tool is invoked, record the final answer so the loop can stop.
+            if tool_call.function.name == ReturnResult.__name__:
+                return result
+
+            return result
+        except Exception as exc:
+            logger.error("[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc)
+            return f"ERROR: {type(exc).__name__}: {exc}"
+
+    def execute_iterative_loop(self, _, text, all_features) -> str | None:
+        """
+        Iterative execution mode: let the LLM call tools in a loop until it stops.
+        """
+        if not self.config.iterative:
+            raise ValueError(
+                "Iterative config must be provided to execute_iterative_loop"
+            )
+
+        tool_cfgs = (
+            list(self.config.iterative.tools)
+            if self.config.iterative and self.config.iterative.tools
+            else []
+        )
+        tool_cfgs.append(ReturnResult)
+
+        tools = self._instantiate_tools(tool_cfgs)
+        max_iter = (
+            self.config.iterative.max_iterations
+            if self.config.iterative is not None
+            else 1
+        )
+
+        examples = self.pformater.build_examples(
+            text, self.embedder, self.reranker, self.config
+        )
+
+        sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
+        messages = [
+            {"role": "system", "content": sprompt},
+            {"role": "user", "content": uprompt},
+        ]
+
+        last_message = None
+        last_tool_result = None
+        for _ in range(max_iter):
+            response = self.pexecutor.get_messages_prompt_results(
+                messages, tools=self._get_tool_schemas(tools)
+            )
+
+            if response == self.config.results.bad_request_default_value:
+                logger.error("LLM completion returned bad_request_default_value")
+                return "ERROR: BadRequest"
+
+            last_message = response.choices[0].message
+
+            if not last_message.tool_calls:
+                return last_message.content
+
+            messages.append(last_message)
+
+            for tool_call in last_message.tool_calls:
+                result = self._execute_tool(tool_call, tools)
+                if isinstance(result, ReturnResultWrapper):
+                    return str(result.result)
+                last_tool_result = result
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result if isinstance(result, str) else str(result),
+                    }
+                )
+
+        # Return the last assistant content as a fallback if max_iter reached
+        if last_message and last_message.content:
+            return last_message.content
+        if last_tool_result is not None:
+            return str(last_tool_result)
+        return "ERROR: MaxIterationsExceeded"
 
     def execute_single_prompt(self, i, text, all_features):
         examples = self.pformater.build_examples(
@@ -301,7 +510,9 @@ class Ragthoven:
             all_features = self.data_preprocessor.preprocess(all_features)
 
         pres = None
-        if self.config.llm.prompts is not None:
+        if self.config.iterative is not None and self.config.iterative.enabled:
+            pres = self.execute_iterative_loop(index, text, all_features)
+        elif self.config.llm.prompts is not None:
             use_messages = self.config.llm.messages
             if use_messages:
                 pres = self.execute_messages_prompts(index, text, all_features)
