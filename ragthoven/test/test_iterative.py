@@ -3,8 +3,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
-
-import pytest
+import re
 
 from ragthoven.models.iter_matrix import IterationMatrix
 from ragthoven.test import load_config
@@ -13,15 +12,18 @@ from ragthoven.utils import stringify_obj
 
 
 def _coerce_number(value: str):
-    stripped = value.strip()
-    if stripped.lower().startswith("result:"):
-        stripped = stripped.split(":", 1)[1].strip()
+    all_numbers = re.findall(r'([+-]?[0-9]*[.]?[0-9]+)', value)
+
+    if len(all_numbers) == 0:
+        return value
+
+    last_number = str(all_numbers[-1])
     try:
-        if "." in stripped:
-            return float(stripped)
-        return int(stripped)
+        if "." in last_number:
+            return float(last_number)
+        return int(last_number)
     except ValueError:
-        return stripped
+        return last_number
 
 
 def _read_expected():

@@ -4,6 +4,7 @@ import logging
 
 import litellm
 
+from ragthoven.constants import LLM_OVERRIDE_KEYS
 from ragthoven.models.base import Config
 from ragthoven.tools import BaseFunCalling
 from ragthoven.utils import get_class, get_class_func_name_only
@@ -63,10 +64,9 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
         # Apply per-call overrides for model/base_url/temperature
         model_params = dict(self.model_params)
         if llm_overrides is not None:
-            if "base_url" in llm_overrides:
-                model_params["base_url"] = llm_overrides["base_url"]
-            if "temperature" in llm_overrides:
-                model_params["temperature"] = llm_overrides["temperature"]
+            for k, v in llm_overrides.items():
+                if k in LLM_OVERRIDE_KEYS:
+                    model_params[k] = v
 
         model_to_use = (
             llm_overrides.get("model")

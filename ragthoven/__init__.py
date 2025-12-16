@@ -3,10 +3,11 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 
 import tqdm
 
-from ragthoven.constants import PROMPT_LOGGING
+from ragthoven.constants import LLM_OVERRIDE_KEYS, PROMPT_LOGGING
 from ragthoven.executors.cde_embedder import CDEEmbedder
 from ragthoven.executors.embedder import BaseEmbedder, ChromaEmbedder
 from ragthoven.executors.output_writer import (
@@ -25,13 +26,21 @@ from ragthoven.executors.prompt_formatter import (
 )
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
-from ragthoven.tools.reasoning_tools import ReturnResult, ReturnResultWrapper
-from ragthoven.utils import get_class, get_class_func_name_only
+from ragthoven.tools import ReturnResult, ReturnResultWrapper
+from ragthoven.utils import get_class
 from ragthoven.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
 logger.propagate = False
 logger.setLevel(logging.ERROR)
+
+
+@dataclass
+class ToolSpec:
+    name: str
+    cls: type | None
+    model_override: str | None
+    llm_overrides: dict
 
 
 class Ragthoven:
@@ -139,14 +148,51 @@ class Ragthoven:
         else:
             self.output_write = output_write
 
+    @staticmethod
+    def _parse_tool_cfg(cfg) -> ToolSpec:
+        if isinstance(cfg, dict):
+            name = cfg.get("name")
+            return ToolSpec(
+                name=name,
+                cls=None,
+                model_override=cfg.get("model"),
+                llm_overrides={
+                    key: cfg.get(key)
+                    for key in LLM_OVERRIDE_KEYS
+                    if cfg.get(key) is not None
+                },
+            )
+
+        if inspect.isclass(cfg):
+            cls = cfg
+            dotted = f"{cls.__module__.removeprefix('ragthoven.tools.')}.{cls.__name__}"
+            return ToolSpec(name=dotted, cls=cls, model_override=None, llm_overrides={})
+
+        return ToolSpec(name=cfg, cls=None, model_override=None, llm_overrides={})
+
+    @staticmethod
+    def _filter_kwargs_for_init(cls, kwargs):
+        params = inspect.signature(cls.__init__).parameters
+        accepts_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+        )
+        if accepts_kwargs:
+            return kwargs
+        return {k: v for k, v in kwargs.items() if k in params and k != "self"}
+
     def _instantiate_tools(self, tool_configs):
         """
-        Instantiate tools defined in config.iterative.tools with dependency injection.
-        """
-        tools = {}
-        if tool_configs is None:
-            return tools
+        Instantiate tools from `config.iterative.tools` with dependency injection.
 
+        Accepts three config shapes per tool:
+        - dotted path string relative to `ragthoven.tools`
+        - class reference
+        - dict with `name` and optional LLM overrides: model/base_url/temperature
+        """
+        if not tool_configs:
+            return {}
+
+        tools = {}
         available_deps = {
             "prompt_executor": self.pexecutor,
             "embedder": self.embedder,
@@ -154,28 +200,16 @@ class Ragthoven:
         }
 
         for cfg in tool_configs:
-            model_override = None
-            llm_overrides = {}
-            cls = None
-
-            if isinstance(cfg, dict):
-                name = cfg.get("name")
-                model_override = cfg.get("model")
-                for key in ("model", "base_url", "temperature"):
-                    if cfg.get(key) is not None:
-                        llm_overrides[key] = cfg.get(key)
-            elif inspect.isclass(cfg):
-                cls = cfg
-                # Normalize to the dotted path expected by get_class
-                name = (
-                    f"{cls.__module__.split('ragthoven.tools.', 1)[-1]}.{cls.__name__}"
-                )
-            else:
-                name = cfg
+            spec = self._parse_tool_cfg(cfg)
+            name, cls, model_override, llm_overrides = (
+                spec.name,
+                spec.cls,
+                spec.model_override,
+                spec.llm_overrides,
+            )
 
             if name is None:
                 raise ValueError("Tool configuration is missing 'name'")
-
             if "." not in name:
                 raise ValueError(
                     "Tool name must include its module prefix, e.g. 'reasoning_tools.Calculator'"
@@ -183,13 +217,10 @@ class Ragthoven:
 
             if cls is None:
                 cls = get_class("ragthoven.tools", name)
-                class_name = get_class_func_name_only(name)
-            else:
-                class_name = cls.__name__
+            class_name = cls.__name__
 
-            requires = getattr(cls, "requires", [])
             kwargs = {}
-            for dep in requires:
+            for dep in getattr(cls, "requires", []):
                 if dep not in available_deps:
                     raise ValueError(f"Unsupported dependency requested: {dep}")
                 if available_deps[dep] is None:
@@ -197,23 +228,13 @@ class Ragthoven:
                         f"Tool '{class_name}' requires '{dep}' but it is not configured."
                     )
                 kwargs[dep] = available_deps[dep]
+
             if model_override is not None:
                 kwargs["model_override"] = model_override
             if llm_overrides:
                 kwargs["llm_overrides"] = llm_overrides
 
-            # Only pass kwargs that the tool __init__ accepts (or **kwargs), to avoid crashes
-            sig = inspect.signature(cls.__init__)
-            params = sig.parameters
-            accepts_kwargs = any(
-                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
-            )
-            filtered_kwargs = kwargs
-            if not accepts_kwargs:
-                filtered_kwargs = {
-                    k: v for k, v in kwargs.items() if k in params and k != "self"
-                }
-
+            filtered_kwargs = self._filter_kwargs_for_init(cls, kwargs)
             instance = cls(**filtered_kwargs)
             tools[instance.name] = instance
 
