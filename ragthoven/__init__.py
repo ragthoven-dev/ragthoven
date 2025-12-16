@@ -449,11 +449,11 @@ class Ragthoven:
                         {
                             "role": "assistant",
                             "tool_calls": [
-                                tool_call.function.name
+                                tool_call['function']['name']
                                 for tool_call in message.tool_calls
                             ],
                             "arguments": [
-                                tool_call.function.arguments
+                                tool_call['function']['arguments']
                                 for tool_call in message.tool_calls
                             ],
                         }
