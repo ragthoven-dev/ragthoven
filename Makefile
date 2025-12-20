@@ -29,6 +29,10 @@ test-iterative:
 	mv math_calc_results* test_output && \
 	mv math_calc_self_verification_results.* test_output
 
+test-output-writer:
+	PYTHONPATH=ragthoven && \
+	poetry run pytest ragthoven/test/test_output_writer.py
+
 clean:
 	rm -rf test_output/* && \
 	rm -rf .pytest_cache
@@ -38,3 +42,4 @@ test:
 	make test-intensive
 	make test-preproc
 	make test-iterative
+	make test-output-writer

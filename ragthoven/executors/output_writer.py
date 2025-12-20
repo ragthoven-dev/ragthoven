@@ -33,6 +33,7 @@ class JSONLOutputWriter(BaseOutputWriter):
     def __init__(self, path, config: Config) -> None:
         self.config = config
         self.processed_ids = set()
+        self.output_field = self.config.results.output_field or "label"
         if self.config.results.output_cached == True and os.path.exists(path):
             with open(path, "r", encoding="utf-8") as already_processed:
                 for line in already_processed.readlines():
@@ -53,7 +54,7 @@ class JSONLOutputWriter(BaseOutputWriter):
 
     def append(self, response: str, id: str):
         data = {
-            "label": response,
+            self.output_field: response,
             (
                 "id"
                 if self.config.results.output_cache_id is None
@@ -70,6 +71,7 @@ class CSVOutputWriter(BaseOutputWriter):
     def __init__(self, path, config: Config) -> None:
         self.config = config
         self.processed_ids = set()
+        self.output_field = self.config.results.output_field or "label"
 
         if self.config.results.output_cached == True and os.path.exists(path):
             with open(path, "r", newline="") as already_processed:
@@ -97,7 +99,7 @@ class CSVOutputWriter(BaseOutputWriter):
                         if self.config.results.output_cache_id is None
                         else self.config.results.output_cache_id
                     ),
-                    "label",
+                    self.output_field,
                 ]
             )
 
