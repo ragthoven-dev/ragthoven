@@ -133,7 +133,10 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
       ragthoven <config file path> --output csv
       ```
     
+    Supported formats include `jsonl`, `csv`, and `tsv`.
     The default output format is `.jsonl`, if the output format is not specified.
+    When using `tsv`, the second column name comes from `results.output_field` in your config
+    (e.g. set `output_field: text` for SemEval-style `id` + `text` outputs).
     
     You can always use the `--help` option to know which output formats are supported.
 

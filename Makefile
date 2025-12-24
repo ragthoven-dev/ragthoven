@@ -31,7 +31,7 @@ test-iterative:
 
 test-output-writer:
 	PYTHONPATH=ragthoven && \
-	poetry run pytest ragthoven/test/test_output_writer.py
+	poetry run pytest ragthoven/test/test_output_writer.py ragthoven/test/test_output_writer_tsv.py
 
 clean:
 	rm -rf test_output/* && \

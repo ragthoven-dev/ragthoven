@@ -11,6 +11,7 @@ from ragthoven.executors.output_writer import (
     CSVOutputWriter,
     JSONLOutputWriter,
     SupportedOutputFormats,
+    TSVOutputWriter,
 )
 from ragthoven.models.base import Config
 from ragthoven.models.iter_matrix import IterationMatrix
@@ -61,7 +62,12 @@ def rag(
                 f"{output_base_name}.{hex_dig}.{SupportedOutputFormats.CSV.value}"
             )
             output_writer = CSVOutputWriter(filename, current_config)
-        else:  # fallback to csv
+        elif output_format == SupportedOutputFormats.TSV:
+            filename = (
+                f"{output_base_name}.{hex_dig}.{SupportedOutputFormats.TSV.value}"
+            )
+            output_writer = TSVOutputWriter(filename, current_config)
+        else:  # fallback to jsonl
             filename = (
                 f"{output_base_name}.{hex_dig}.{SupportedOutputFormats.JSONL.value}"
             )

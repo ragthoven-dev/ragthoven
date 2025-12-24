@@ -10,6 +10,7 @@ from ragthoven.models.base import Config
 class SupportedOutputFormats(str, Enum):
     JSONL = "jsonl"
     CSV = "csv"
+    TSV = "tsv"
 
 
 class BaseOutputWriter(metaclass=abc.ABCMeta):
@@ -67,48 +68,47 @@ class JSONLOutputWriter(BaseOutputWriter):
         self.results_file.close()
 
 
-class CSVOutputWriter(BaseOutputWriter):
-    def __init__(self, path, config: Config) -> None:
+class DelimitedOutputWriter(BaseOutputWriter):
+    def __init__(self, path: str, config: Config, delimiter: str) -> None:
         self.config = config
         self.processed_ids = set()
         self.output_field = self.config.results.output_field or "label"
+        self.id_field = (
+            "id"
+            if self.config.results.output_cache_id is None
+            else self.config.results.output_cache_id
+        )
+        self.delimiter = delimiter
 
         if self.config.results.output_cached == True and os.path.exists(path):
-            with open(path, "r", newline="") as already_processed:
-                csv_reader = csv.DictReader(already_processed)
-                for line in csv_reader:
-                    processed_id = line.get(
-                        [
-                            (
-                                "id"
-                                if self.config.results.output_cache_id is None
-                                else self.config.results.output_cache_id
-                            )
-                        ]
-                    )
-                    self.processed_ids.add(processed_id)
-            self.results_file = open(path, "a", newline="")
-            self.csv_writer = csv.writer(self.results_file)
+            with open(path, "r", newline="", encoding="utf-8") as already_processed:
+                reader = csv.DictReader(already_processed, delimiter=self.delimiter)
+                for line in reader:
+                    processed_id = line.get(self.id_field)
+                    if processed_id is not None:
+                        self.processed_ids.add(processed_id)
+            self.results_file = open(path, "a", newline="", encoding="utf-8")
+            self.csv_writer = csv.writer(self.results_file, delimiter=self.delimiter)
         else:
-            self.results_file = open(path, "w", newline="")
-            self.csv_writer = csv.writer(self.results_file)
-            self.csv_writer.writerow(
-                [
-                    (
-                        "id"
-                        if self.config.results.output_cache_id is None
-                        else self.config.results.output_cache_id
-                    ),
-                    self.output_field,
-                ]
-            )
+            self.results_file = open(path, "w", newline="", encoding="utf-8")
+            self.csv_writer = csv.writer(self.results_file, delimiter=self.delimiter)
+            self.csv_writer.writerow([self.id_field, self.output_field])
 
     def get_processed_ids(self):
         return self.processed_ids
 
     def append(self, response: str, id: str):
-        data = [id, response]
-        self.csv_writer.writerow(data)
+        self.csv_writer.writerow([id, response])
 
     def close(self):
         self.results_file.close()
+
+
+class CSVOutputWriter(DelimitedOutputWriter):
+    def __init__(self, path, config: Config) -> None:
+        super().__init__(path, config, delimiter=",")
+
+
+class TSVOutputWriter(DelimitedOutputWriter):
+    def __init__(self, path, config: Config) -> None:
+        super().__init__(path, config, delimiter="\t")
