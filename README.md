@@ -133,7 +133,10 @@ https://github.com/user-attachments/assets/1bd037a7-0af5-4f93-9347-64143d74e5c6
       ragthoven <config file path> --output csv
       ```
     
+    Supported formats include `jsonl`, `csv`, and `tsv`.
     The default output format is `.jsonl`, if the output format is not specified.
+    When using `tsv`, the second column name comes from `results.output_field` in your config
+    (e.g. set `output_field: text` for SemEval-style `id` + `text` outputs).
     
     You can always use the `--help` option to know which output formats are supported.
 
@@ -185,6 +188,7 @@ Here is a full example:
 - Output specific configurations
   - `output_cached` - (Optional) when running validation on huge datasets (eg. 30k validation data)  in case of a crash (e.g. due to no API credits available ...) only partial data is written into the results file by default. When running RAGthoven once again, the results file is recreated and all existing results data is lost. In order to prevent this, it is possible to set `output_cached` to `true`. When running again RAGthoven loads results file and performs inference only on `ids` that are not yet present in the results file.
   - `output_cache_id` - (Optional) specify what is the name of the feature to be used as `id` in the output
+  - `output_field` - (Optional) specify the field/column name to store predictions (defaults to `label`)
   - `output_filename` - (Optional) specify the output file name (whithout extension)
   - `bad_request_default_value` - (Optional) what is the desired output of the RAGthoven when the request ends in error (e.g. because the LLM API refuses to respond...)
 A full example:
@@ -194,6 +198,7 @@ A full example:
     output_cached: true
     output_cache_id: "index"
     output_filename: "results"
+    output_field: "prediction"
     bad_request_default_value: -1
   ```
 

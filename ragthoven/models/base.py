@@ -45,6 +45,7 @@ class ValidationData:
 class Results:
     output_cached: Optional[str] = None
     output_cache_id: Optional[str] = None
+    output_field: Optional[str] = "label"
     bad_request_default_value: Optional[str] = None
     batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     output_filename: Optional[str] = (
