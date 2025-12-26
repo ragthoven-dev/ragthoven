@@ -51,6 +51,8 @@ class Results:
     output_filename: Optional[str] = (
         "results"  # should have no extension (i.e. no "results.jsonl")
     )
+    trace_enabled: Optional[bool] = False
+    trace_output_filename: Optional[str] = None
 
 
 @dataclass

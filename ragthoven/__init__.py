@@ -1,7 +1,9 @@
+import hashlib
 import inspect
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
@@ -15,6 +17,8 @@ from ragthoven.executors.output_writer import (
     JSONLOutputWriter,
     SupportedOutputFormats,
 )
+from ragthoven.executors.trace_callback import JsonlTraceCallback
+from ragthoven.executors.trace_writer import JSONLTraceWriter
 from ragthoven.executors.preprocessor import BaseDataPreprocessor, DataPreprocessor
 from ragthoven.executors.prompt_executor import (
     BasePromptExecutor,
@@ -27,7 +31,7 @@ from ragthoven.executors.prompt_formatter import (
 from ragthoven.executors.reranker import BaseReranker, FlashRanker
 from ragthoven.models.base import Config, EmbedderType
 from ragthoven.tools import ReturnResult, ReturnResultWrapper
-from ragthoven.utils import get_class
+from ragthoven.utils import get_class, stringify_obj
 from ragthoven.utils.dataset_loader import dataset_load
 
 logger = logging.getLogger()
@@ -53,10 +57,13 @@ class Ragthoven:
         prompt_executor: BasePromptExecutor | None = None,
         data_preprocessor: BaseDataPreprocessor | None = None,
         output_write: BaseOutputWriter | None = None,
+        trace_writer: JSONLTraceWriter | None = None,
+        run_id: str | None = None,
     ):
         self.config = config
         self.train_dataset = None
         self.validation_dataset = None
+        self.run_id = run_id
 
         self.train_dataset = None
         if self.config.embed is not None:
@@ -147,6 +154,29 @@ class Ragthoven:
             self.output_write = JSONLOutputWriter(output_file, self.config)
         else:
             self.output_write = output_write
+
+        self.trace_writer = trace_writer
+        if self.trace_writer is None and self.config.results.trace_enabled:
+            trace_base = (
+                self.config.results.trace_output_filename
+                or self.config.results.output_filename
+            )
+            trace_file = f"{trace_base}.traces.jsonl"
+            self.trace_writer = JSONLTraceWriter(trace_file)
+        self.trace_callback = None
+        if self.trace_writer is not None:
+            self.trace_callback = JsonlTraceCallback(self.trace_writer)
+            try:
+                import litellm
+
+                callbacks = list(litellm.callbacks or [])
+                callbacks = [
+                    cb for cb in callbacks if not isinstance(cb, JsonlTraceCallback)
+                ]
+                callbacks.append(self.trace_callback)
+                litellm.callbacks = callbacks
+            except Exception as exc:
+                logger.error("Failed to register LiteLLM trace callback: %s", exc)
 
     @staticmethod
     def _parse_tool_cfg(cfg) -> ToolSpec:
@@ -273,7 +303,66 @@ class Ragthoven:
             logger.error("[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc)
             return f"ERROR: {type(exc).__name__}: {exc}"
 
-    def execute_iterative_loop(self, _, text, all_features) -> str | None:
+    def _get_run_id(self):
+        if self.run_id is None:
+            object_stringified = stringify_obj(self.config)
+            config_hash = hashlib.sha256(object_stringified.encode())
+            self.run_id = str(config_hash.hexdigest())[:12]
+        return self.run_id
+
+    def _call_prompt_results(self, sprompt, uprompt, tools=None, metadata=None):
+        try:
+            return self.pexecutor.get_prompt_results(
+                sprompt, uprompt, tools, metadata=metadata
+            )
+        except TypeError:
+            return self.pexecutor.get_prompt_results(sprompt, uprompt, tools)
+
+    def _call_messages_prompt_results(self, messages, tools=None, metadata=None):
+        try:
+            return self.pexecutor.get_messages_prompt_results(
+                messages, tools=tools, metadata=metadata
+            )
+        except TypeError:
+            return self.pexecutor.get_messages_prompt_results(messages, tools=tools)
+
+    def _build_trace_metadata(self, example_id, text, all_features):
+        safe_features = json.loads(json.dumps(all_features, default=str))
+        return {
+            "run_id": self._get_run_id(),
+            "example_id": example_id,
+            "input_feature": self.config.validation_data.input_feature,
+            "input_text": text,
+            "features": safe_features,
+        }
+
+    @staticmethod
+    def _extend_trace_metadata(base_metadata, **extra):
+        if base_metadata is None:
+            return None
+        merged = dict(base_metadata)
+        for key, value in extra.items():
+            if value is not None:
+                merged[key] = value
+        return merged
+
+    def _build_output_trace_event(self, index, example_id, text, all_features, output):
+        safe_features = json.loads(json.dumps(all_features, default=str))
+        return {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "seq": index,
+            "event": "ragthoven_output",
+            "run_id": self._get_run_id(),
+            "example_id": example_id,
+            "input": {
+                "feature": self.config.validation_data.input_feature,
+                "text": text,
+                "features": safe_features,
+            },
+            "output": output,
+        }
+
+    def execute_iterative_loop(self, _, text, all_features, trace_metadata=None):
         """
         Iterative execution mode: let the LLM call tools in a loop until it stops.
         """
@@ -308,9 +397,13 @@ class Ragthoven:
 
         last_message = None
         last_tool_result = None
-        for _ in range(max_iter):
-            response = self.pexecutor.get_messages_prompt_results(
-                messages, tools=self._get_tool_schemas(tools)
+        for iteration in range(max_iter):
+            response = self._call_messages_prompt_results(
+                messages,
+                tools=self._get_tool_schemas(tools),
+                metadata=self._extend_trace_metadata(
+                    trace_metadata, mode="iterative", iteration=iteration
+                ),
             )
 
             if response == self.config.results.bad_request_default_value:
@@ -345,24 +438,27 @@ class Ragthoven:
             return str(last_tool_result)
         return "ERROR: MaxIterationsExceeded"
 
-    def execute_single_prompt(self, i, text, all_features):
+    def execute_single_prompt(self, i, text, all_features, trace_metadata=None):
         examples = self.pformater.build_examples(
             text, self.embedder, self.reranker, self.config
         )
         sprompt, uprompt = self.pformater.format_simple(text, all_features, examples)
-        pres = self.pexecutor.get_prompt_results(sprompt, uprompt)
+        pres = self._call_prompt_results(
+            sprompt,
+            uprompt,
+            metadata=self._extend_trace_metadata(trace_metadata, mode="single"),
+        )
         if i == 0 and self.config.llm.log_first:
             print(PROMPT_LOGGING.format(sprompt=sprompt, uprompt=uprompt, pres=pres))
         return pres
 
-    def execute_messages_prompts(self, j, text, all_features):
+    def execute_messages_prompts(self, j, text, all_features, trace_metadata=None):
         examples = self.pformater.build_examples(
             text, self.embedder, self.reranker, self.config
         )
         prompts = self.config.llm.prompts
         system_prompt = prompts[0]
         named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
-
         if system_prompt.name != "system" or system_prompt.role != "system":
             raise ValueError("First prompt is not a system prompt")
 
@@ -393,8 +489,12 @@ class Ragthoven:
                 }
             )
 
-            response = self.pexecutor.get_messages_prompt_results(
-                messages, tools=prompts[i].tools
+            response = self._call_messages_prompt_results(
+                messages,
+                tools=prompts[i].tools,
+                metadata=self._extend_trace_metadata(
+                    trace_metadata, mode="messages", prompt_name=prompts[i].name
+                ),
             )
 
             if response == self.config.results.bad_request_default_value:
@@ -430,8 +530,14 @@ class Ragthoven:
         # In case the last prompt has a tool call, similar to the example from OpenAI
         # https://platform.openai.com/docs/guides/function-calling?example=get-weather
         if model_response.tool_calls is not None and len(model_response.tool_calls) > 0:
-            response = self.pexecutor.get_messages_prompt_results(
-                messages, tools=prompts[len(prompts) - 1].tools
+            response = self._call_messages_prompt_results(
+                messages,
+                tools=prompts[len(prompts) - 1].tools,
+                metadata=self._extend_trace_metadata(
+                    trace_metadata,
+                    mode="messages",
+                    prompt_name=prompts[len(prompts) - 1].name,
+                ),
             )
             if response == self.config.results.bad_request_default_value:
                 messages.append({"role": "assistant", "content": str(response)})
@@ -467,7 +573,7 @@ class Ragthoven:
 
         return model_response.content
 
-    def execute_sequential_prompts(self, i, text, all_features):
+    def execute_sequential_prompts(self, i, text, all_features, trace_metadata=None):
         named_prompts_with_output = {p.name: p for p in self.config.llm.prompts}
         examples = self.pformater.build_examples(
             text, self.embedder, self.reranker, self.config
@@ -479,7 +585,14 @@ class Ragthoven:
             sprompt, uprompt = self.pformater.format_multiple(
                 text, all_features, prompt.name, named_prompts_with_output, examples
             )
-            pres = self.pexecutor.get_prompt_results(sprompt, uprompt, prompt.tools)
+            pres = self._call_prompt_results(
+                sprompt,
+                uprompt,
+                prompt.tools,
+                metadata=self._extend_trace_metadata(
+                    trace_metadata, mode="sequential", prompt_name=prompt.name
+                ),
+            )
 
             if i == 0 and self.config.llm.log_first:
                 print(
@@ -509,19 +622,37 @@ class Ragthoven:
         if self.data_preprocessor is not None:
             all_features = self.data_preprocessor.preprocess(all_features)
 
+        trace_metadata = (
+            self._build_trace_metadata(example_id, text, all_features)
+            if self.trace_writer is not None
+            else None
+        )
         pres = None
         if self.config.iterative is not None and self.config.iterative.enabled:
-            pres = self.execute_iterative_loop(index, text, all_features)
+            pres = self.execute_iterative_loop(
+                index, text, all_features, trace_metadata=trace_metadata
+            )
         elif self.config.llm.prompts is not None:
             use_messages = self.config.llm.messages
             if use_messages:
-                pres = self.execute_messages_prompts(index, text, all_features)
+                pres = self.execute_messages_prompts(
+                    index, text, all_features, trace_metadata=trace_metadata
+                )
             else:
-                pres = self.execute_sequential_prompts(index, text, all_features)
+                pres = self.execute_sequential_prompts(
+                    index, text, all_features, trace_metadata=trace_metadata
+                )
         else:
-            pres = self.execute_single_prompt(index, text, all_features)
+            pres = self.execute_single_prompt(
+                index, text, all_features, trace_metadata=trace_metadata
+            )
 
-        return (pres, example_id)
+        trace_event = None
+        if self.trace_writer is not None:
+            trace_event = self._build_output_trace_event(
+                index, example_id, text, all_features, pres
+            )
+        return (pres, example_id, trace_event)
 
     def process_batch_parallel(
         self, start_index, end_index, processed_ids, max_workers=20
@@ -568,7 +699,10 @@ class Ragthoven:
         # write to output file
         for res in results:
             if res["prediction"] is not None:
-                self.output_write.append(res["prediction"][0], res["prediction"][1])
+                pres, example_id, trace_event = res["prediction"]
+                self.output_write.append(pres, example_id)
+                if self.trace_writer is not None and trace_event is not None:
+                    self.trace_writer.append(trace_event)
             else:
                 print(f"Skipping already processed index: {res['index']}")
 
@@ -606,6 +740,8 @@ class Ragthoven:
             self.process_batch_parallel(start_index, end_index, processed_ids)
 
         self.output_write.close()
+        if self.trace_writer is not None:
+            self.trace_writer.close()
 
         end_time = time.time()
         elapsed_time = end_time - start_time

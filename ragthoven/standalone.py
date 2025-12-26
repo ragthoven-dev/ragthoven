@@ -13,6 +13,7 @@ from ragthoven.executors.output_writer import (
     SupportedOutputFormats,
     TSVOutputWriter,
 )
+from ragthoven.executors.trace_writer import JSONLTraceWriter
 from ragthoven.models.base import Config
 from ragthoven.models.iter_matrix import IterationMatrix
 from ragthoven.utils import stringify_obj, stringify_obj_beautiful
@@ -43,6 +44,7 @@ def rag(
 
         # Process terminal options
         output_writer = None
+        trace_writer = None
         output_base_name = current_config.results.output_filename
 
         # write metadata
@@ -73,7 +75,19 @@ def rag(
             )
             output_writer = JSONLOutputWriter(filename, current_config)
 
-        r = Ragthoven(current_config, output_write=output_writer)
+        if current_config.results.trace_enabled:
+            trace_base_name = (
+                current_config.results.trace_output_filename or output_base_name
+            )
+            trace_filename = f"{trace_base_name}.{hex_dig}.traces.jsonl"
+            trace_writer = JSONLTraceWriter(trace_filename)
+
+        r = Ragthoven(
+            current_config,
+            output_write=output_writer,
+            trace_writer=trace_writer,
+            run_id=hex_dig,
+        )
         r.execute()
         cont = iter_matrix.inc()
 

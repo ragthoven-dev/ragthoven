@@ -15,17 +15,23 @@ logger = logging.getLogger(__name__)
 class BasePromptExecutor(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def get_prompt_results(self):
+    def get_prompt_results(self, sprompt, uprompt, tools=None, model=None, metadata=None):
         raise NotImplementedError(f"Prompt {self} did not implement promot")
 
 
 class LiteLLMPromptExecutor(BasePromptExecutor):
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Config = None, trace_callback=None):
         self.config = config
         self.model_params = {
             "temperature": self.config.llm.temperature,
             "base_url": self.config.llm.base_url,
         }
+
+        if trace_callback is not None:
+            callbacks = list(litellm.callbacks or [])
+            if trace_callback not in callbacks:
+                callbacks.append(trace_callback)
+                litellm.callbacks = callbacks
 
         self.available_tools = {}
         if self.config.llm.tools is not None and len(self.config.llm.tools) > 0:
@@ -53,7 +59,12 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
         return to_model_tools
 
     def get_messages_prompt_results(
-        self, messages, tools, model=None, llm_overrides: dict | None = None
+        self,
+        messages,
+        tools,
+        model=None,
+        llm_overrides: dict | None = None,
+        metadata: dict | None = None,
     ):
         from litellm import completion
 
@@ -66,6 +77,8 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
             for k, v in llm_overrides.items():
                 if k in LLM_OVERRIDE_KEYS:
                     model_params[k] = v
+        if metadata is not None:
+            model_params["metadata"] = metadata
 
         model_to_use = (
             llm_overrides.get("model")
@@ -99,13 +112,15 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
                 resulting_calls.append((fn_to_call, function_result, tool_call.id))
         return resulting_calls
 
-    def get_prompt_results(self, sprompt, uprompt, tools=None, model=None):
+    def get_prompt_results(self, sprompt, uprompt, tools=None, model=None, metadata=None):
         messages = [
             {"content": sprompt, "role": "system"},
             {"content": uprompt, "role": "user"},
         ]
 
-        response = self.get_messages_prompt_results(messages, tools, model)
+        response = self.get_messages_prompt_results(
+            messages, tools, model, metadata=metadata
+        )
         if response == self.config.results.bad_request_default_value:
             return response
 

@@ -33,6 +33,10 @@ test-output-writer:
 	PYTHONPATH=ragthoven && \
 	poetry run pytest ragthoven/test/test_output_writer.py ragthoven/test/test_output_writer_tsv.py
 
+test-tracing:
+	PYTHONPATH=ragthoven && \
+	poetry run pytest ragthoven/test/test_tracing.py
+
 clean:
 	rm -rf test_output/* && \
 	rm -rf .pytest_cache
@@ -43,3 +47,4 @@ test:
 	make test-preproc
 	make test-iterative
 	make test-output-writer
+	make test-tracing
