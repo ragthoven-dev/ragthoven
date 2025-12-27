@@ -153,7 +153,7 @@ To configure RAGthoven to run experiment on a dataset it needs a valid configura
 
 - Training dataset is used to provide examples to the LLM. We need to specify the dataset source, textual intput, labels and split. 
 
-  - `dataset` - This can be any huggingface dataset (eg. `nyu-mll/glue`), a `csv` file (as described bellow) or a `json` file. These can be specified by prefixing the path with `csv:` or `json:` respectively.
+  - `dataset` - This can be any huggingface dataset (eg. `nyu-mll/glue`), a `csv`/`tsv` file (as described bellow) or a `json` file. These can be specified by prefixing the path with `csv:`, `tsv:` or `json:` respectively.
   - `input_feature` - which feature to use for embedding/reranking
   - `output_feature` (or `label_feature`) - which feature to use as `input_feature`'s classification label/regression score/summarization summary/translation target.
   - `split_name` - useful especially with HuggingFace dataset, leave as `train` when loading `json` or `csv`
