@@ -102,6 +102,7 @@ class LLM:
     examples: Optional[str] = None
     model: Optional[str] | list[str] = "gpt-4o"
     base_url: Optional[str] = None
+    extra_headers: Optional[dict] = None
     messages: Optional[bool] = False
     temperature: Optional[float] | Optional[list[float]] = 0
 
