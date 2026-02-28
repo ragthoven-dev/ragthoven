@@ -103,6 +103,7 @@ class LLM:
     model: Optional[str] | list[str] = "gpt-4o"
     base_url: Optional[str] = None
     extra_headers: Optional[dict] = None
+    parallel_tool_calls: Optional[bool] = None
     messages: Optional[bool] = False
     temperature: Optional[float] | Optional[list[float]] = 0
 

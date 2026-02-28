@@ -274,6 +274,55 @@ class Ragthoven:
             logger.error("[RAGTHOVEN][TOOL] error=%s: %s", type(exc).__name__, exc)
             return f"ERROR: {type(exc).__name__}: {exc}"
 
+    def _parallel_tool_calls_enabled(self) -> bool:
+        """
+        Return whether parallel tool calls should be honored.
+
+        Default is False to maximize compatibility across providers (including
+        Anthropic models exposed via OpenAI-compatible endpoints).
+        """
+        configured = getattr(self.config.llm, "parallel_tool_calls", None)
+        if configured is None:
+            return False
+        return bool(configured)
+
+    @staticmethod
+    def _serialize_tool_call(tool_call):
+        if isinstance(tool_call, dict):
+            return tool_call
+
+        return {
+            "id": tool_call.id,
+            "type": "function",
+            "function": {
+                "name": tool_call.function.name,
+                "arguments": tool_call.function.arguments,
+            },
+        }
+
+    def _normalize_tool_calls(self, tool_calls):
+        if tool_calls is None:
+            return []
+
+        normalized = list(tool_calls)
+        if len(normalized) <= 1 or self._parallel_tool_calls_enabled():
+            return normalized
+
+        logger.info(
+            "[RAGTHOVEN][TOOL] received %d tool calls while parallel_tool_calls is disabled; keeping the first call only.",
+            len(normalized),
+        )
+        return [normalized[0]]
+
+    def _assistant_tool_call_message(self, assistant_message, tool_calls):
+        message = {
+            "role": "assistant",
+            "tool_calls": [self._serialize_tool_call(tc) for tc in tool_calls],
+        }
+        if assistant_message.content is not None:
+            message["content"] = assistant_message.content
+        return message
+
     def execute_iterative_loop(self, _, text, all_features) -> str | None:
         """
         Iterative execution mode: let the LLM call tools in a loop until it stops.
@@ -320,12 +369,13 @@ class Ragthoven:
 
             last_message = response.choices[0].message
 
-            if not last_message.tool_calls:
+            tool_calls = self._normalize_tool_calls(last_message.tool_calls)
+            if not tool_calls:
                 return last_message.content
 
-            messages.append(last_message)
+            messages.append(self._assistant_tool_call_message(last_message, tool_calls))
 
-            for tool_call in last_message.tool_calls:
+            for tool_call in tool_calls:
                 result = self._execute_tool(tool_call, tools)
                 if isinstance(result, ReturnResultWrapper):
                     return str(result.result)
@@ -380,6 +430,9 @@ class Ragthoven:
             },
         ]
 
+        model_response = None
+        response = None
+        last_tool_calls = []
         for i in range(1, len(prompts)):
             messages.append(
                 {
@@ -409,11 +462,14 @@ class Ragthoven:
             model_response = response.choices[0].message
             named_prompts_with_output[prompts[i].name].out = model_response
 
-            tool_calls = model_response.tool_calls
+            tool_calls = self._normalize_tool_calls(model_response.tool_calls)
+            last_tool_calls = tool_calls
             processed_tool_calls = self.pexecutor.get_all_function_calls(tool_calls)
 
             if tool_calls:
-                messages.append(model_response)
+                messages.append(
+                    self._assistant_tool_call_message(model_response, tool_calls)
+                )
                 for tool_call in processed_tool_calls:
                     _, function_result, tool_call_id = tool_call
                     messages.append(
@@ -430,7 +486,7 @@ class Ragthoven:
 
         # In case the last prompt has a tool call, similar to the example from OpenAI
         # https://platform.openai.com/docs/guides/function-calling?example=get-weather
-        if model_response.tool_calls is not None and len(model_response.tool_calls) > 0:
+        if last_tool_calls and len(last_tool_calls) > 0:
             response = self.pexecutor.get_messages_prompt_results(
                 messages, tools=prompts[len(prompts) - 1].tools
             )
