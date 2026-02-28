@@ -1,7 +1,6 @@
 import abc
 import json
 import logging
-import os
 
 import litellm
 
@@ -27,18 +26,8 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
             "temperature": self.config.llm.temperature,
             "base_url": self.config.llm.base_url,
         }
-        # Support CI token + Cisco app header for LLM proxy usage.
-        ci_token = os.environ.get("CI_TOKEN")
-        if ci_token:
-            self.model_params["api_key"] = ci_token
-        extra_headers = {}
         if self.config.llm.extra_headers:
-            extra_headers.update(self.config.llm.extra_headers)
-        cisco_app = os.environ.get("X_CISCO_APP") or os.environ.get("CISCO_APP")
-        if cisco_app:
-            extra_headers.setdefault("x-cisco-app", cisco_app)
-        if extra_headers:
-            self.model_params["extra_headers"] = extra_headers
+            self.model_params["extra_headers"] = dict(self.config.llm.extra_headers)
 
         self.available_tools = {}
         if self.config.llm.tools is not None and len(self.config.llm.tools) > 0:
