@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -596,6 +597,7 @@ class Ragthoven:
             0 if (len(array_to_process) % batch_size == 0) else 1
         )
 
+        max_workers = int(os.getenv("RAGTHOVEN_MAX_WORKERS", "20"))
         for batch in tqdm.tqdm(range(num_batches)):
             start_index = batch * batch_size
             end_index = min((batch + 1) * batch_size - 1, len(array_to_process) - 1)
@@ -603,7 +605,9 @@ class Ragthoven:
             print(
                 f"Processing batch: {batch} with start_index: {start_index} and end_index: {end_index}"
             )
-            self.process_batch_parallel(start_index, end_index, processed_ids)
+            self.process_batch_parallel(
+                start_index, end_index, processed_ids, max_workers=max_workers
+            )
 
         self.output_write.close()
 

@@ -1,6 +1,7 @@
 import importlib
 import json
 import random
+import re
 import string
 
 
@@ -18,9 +19,22 @@ def stringify_obj_beautiful(obj):
 
 
 def chromadb_normalize_name(collection_name: str):
-    return collection_name.lower().replace(" ", "-").replace("/", "-").replace(
-        ":", "-"
-    )[:32] + "".join(random.choices(string.ascii_letters, k=5))
+    normalized = collection_name.lower()
+    normalized = re.sub(r"[^a-z0-9._-]+", "-", normalized)
+    normalized = re.sub(r"^[^a-z0-9]+", "", normalized)
+    normalized = re.sub(r"[^a-z0-9]+$", "", normalized)
+    while ".." in normalized:
+        normalized = normalized.replace("..", ".")
+    if not normalized:
+        normalized = "collection"
+    suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=5))
+    max_base_len = 63 - len(suffix)
+    normalized = normalized[:max_base_len]
+    normalized = re.sub(r"[^a-z0-9]+$", "", normalized)
+    normalized = re.sub(r"^[^a-z0-9]+", "", normalized)
+    if not normalized:
+        normalized = "collection"
+    return normalized + suffix
 
 
 def get_class_func_name_only(path: str):

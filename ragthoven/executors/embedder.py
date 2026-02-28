@@ -40,11 +40,11 @@ class ChromaEmbedder(BaseEmbedder):
 
     def set_training_dataset(self, training_dataset: Dataset):
         self.train_dataset = training_dataset
-        self.max_range = (
-            self.embedding_limit
-            if self.embedding_limit is not None and int(self.embedding_limit) > 0
-            else len(self.train_dataset[self.input_feature])
-        )
+        dataset_size = len(self.train_dataset[self.input_feature])
+        if self.embedding_limit is not None and int(self.embedding_limit) > 0:
+            self.max_range = min(int(self.embedding_limit), dataset_size)
+        else:
+            self.max_range = dataset_size
 
     def embedd(self):
         self.collection.add(
