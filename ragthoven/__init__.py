@@ -289,9 +289,9 @@ class Ragthoven:
     @staticmethod
     def _serialize_tool_call(tool_call):
         if isinstance(tool_call, dict):
-            return tool_call
+            return dict(tool_call)
 
-        return {
+        serialized = {
             "id": tool_call.id,
             "type": "function",
             "function": {
@@ -299,6 +299,13 @@ class Ragthoven:
                 "arguments": tool_call.function.arguments,
             },
         }
+
+        # Preserve provider-specific payloads (e.g. Gemini thought signatures).
+        extra_content = getattr(tool_call, "extra_content", None)
+        if extra_content is not None:
+            serialized["extra_content"] = extra_content
+
+        return serialized
 
     def _normalize_tool_calls(self, tool_calls):
         if tool_calls is None:

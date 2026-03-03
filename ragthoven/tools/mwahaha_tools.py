@@ -1,7 +1,324 @@
 import json
 import re
 
+from ragthoven.executors.prompt_executor import BasePromptExecutor
 from ragthoven.tools import BaseFunCalling
+
+
+class _BaseMwahahaSubagent(BaseFunCalling):
+    """Common helper for LLM-backed MWAHAHA subagent tools."""
+
+    requires: list[str] = ["prompt_executor"]
+
+    def __init__(
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
+    ) -> None:
+        super().__init__()
+        self.prompt_executor = prompt_executor
+        self.model_override = model_override
+        self.llm_overrides = llm_overrides
+
+    @staticmethod
+    def _norm_arg(value, fallback="-") -> str:
+        if value is None:
+            return fallback
+        text = str(value).strip()
+        return text if text else fallback
+
+    @staticmethod
+    def _input_block(headline: str, word1: str, word2: str) -> str:
+        return f"- headline: {headline}\n- word1: {word1}\n- word2: {word2}"
+
+    def _run_subagent(self, system_prompt: str, user_prompt: str) -> str:
+        response = self.prompt_executor.get_messages_prompt_results(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=None,
+            model=self.model_override,
+            llm_overrides=self.llm_overrides,
+        )
+
+        if response is None:
+            return "ERROR: BadRequest"
+
+        default_bad_request = self.prompt_executor.config.results.bad_request_default_value
+        if response == default_bad_request:
+            return "ERROR: BadRequest"
+
+        if not getattr(response, "choices", None):
+            return "ERROR: No response"
+
+        content = response.choices[0].message.content
+        if content is None:
+            return "ERROR: Empty response"
+
+        return str(content).strip()
+
+
+class PlannerSubagent(_BaseMwahahaSubagent):
+    """Planner stage from exp08 as a callable subagent tool."""
+
+    def __init__(
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
+    ) -> None:
+        super().__init__(
+            prompt_executor=prompt_executor,
+            model_override=model_override,
+            llm_overrides=llm_overrides,
+        )
+        self.name = type(self).__name__
+        self.description = (
+            "Planner subagent: create a structured joke plan using script "
+            "opposition and anchors."
+        )
+        self.parameters = {
+            "type": "object",
+            "properties": {
+                "headline": {"type": "string"},
+                "word1": {"type": "string"},
+                "word2": {"type": "string"},
+                "inspiration": {
+                    "type": "string",
+                    "description": "Retrieved examples block for mechanism inspiration.",
+                },
+            },
+            "required": ["headline", "word1", "word2", "inspiration"],
+            "additionalProperties": False,
+        }
+
+    def __call__(self, args):
+        headline = self._norm_arg(args.get("headline"))
+        word1 = self._norm_arg(args.get("word1"))
+        word2 = self._norm_arg(args.get("word2"))
+        inspiration = self._norm_arg(args.get("inspiration"), fallback="")
+
+        system_prompt = (
+            "You are PlannerSubagent in an exp08-style humor pipeline. "
+            "Create a concise but useful plan that maximizes surprise while "
+            "staying safe and constraint-aware."
+        )
+        user_prompt = (
+            f"Inputs:\n{self._input_block(headline, word1, word2)}\n\n"
+            f"Inspiration examples (mechanisms only, do not copy wording/entities):\n"
+            f"{inspiration}\n\n"
+            "Output exactly these sections:\n"
+            "PITFALLS:\n"
+            "STRATEGY:\n"
+            "TRICK_TYPE:\n"
+            "CHECKPOINTS:\n"
+            "SCRIPT_A:\n"
+            "SCRIPT_B:\n"
+            "VIOLATION:\n"
+            "BENIGNING:\n"
+            "PIVOT:\n"
+            "SETUP_GIST:\n"
+            "PUNCHLINE_GIST:\n"
+            "ANCHOR_TOKENS:\n"
+            "WORDPAIR_LINK:\n"
+            "PREMISES:\n"
+            "- ...\n"
+            "MECHANISMS:\n"
+            "- ...\n"
+            "SAFETY_NOTE:\n"
+        )
+        return self._run_subagent(system_prompt, user_prompt)
+
+
+class WriterSubagent(_BaseMwahahaSubagent):
+    """Writer stage from exp08 as a callable subagent tool."""
+
+    def __init__(
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
+    ) -> None:
+        super().__init__(
+            prompt_executor=prompt_executor,
+            model_override=model_override,
+            llm_overrides=llm_overrides,
+        )
+        self.name = type(self).__name__
+        self.description = (
+            "Writer subagent: generate diverse candidate jokes from planner output."
+        )
+        self.parameters = {
+            "type": "object",
+            "properties": {
+                "headline": {"type": "string"},
+                "word1": {"type": "string"},
+                "word2": {"type": "string"},
+                "planner_note": {"type": "string"},
+                "inspiration": {"type": "string"},
+            },
+            "required": ["headline", "word1", "word2", "planner_note", "inspiration"],
+            "additionalProperties": False,
+        }
+
+    def __call__(self, args):
+        headline = self._norm_arg(args.get("headline"))
+        word1 = self._norm_arg(args.get("word1"))
+        word2 = self._norm_arg(args.get("word2"))
+        planner_note = self._norm_arg(args.get("planner_note"), fallback="")
+        inspiration = self._norm_arg(args.get("inspiration"), fallback="")
+
+        system_prompt = (
+            "You are WriterSubagent in an exp08-style humor pipeline. "
+            "Write multiple candidates with strong twist quality and constraint discipline."
+        )
+        user_prompt = (
+            f"Inputs:\n{self._input_block(headline, word1, word2)}\n\n"
+            f"Planner output:\n{planner_note}\n\n"
+            f"Inspiration examples (mechanisms only, no wording/entity reuse):\n"
+            f"{inspiration}\n\n"
+            "Requirements:\n"
+            "- Generate 10 candidates.\n"
+            "- 1-3 sentences each.\n"
+            "- No semicolons.\n"
+            "- Keep candidates diverse.\n"
+            "- If headline is present, reference it with anchor tokens.\n"
+            "- If word1/word2 are not '-', include both exactly.\n\n"
+            "Output format:\n"
+            "C1: ...\nCHECK1: ...\n"
+            "C2: ...\nCHECK2: ...\n"
+            "...\n"
+            "C10: ...\nCHECK10: ...\n"
+        )
+        return self._run_subagent(system_prompt, user_prompt)
+
+
+class ReflectorSubagent(_BaseMwahahaSubagent):
+    """Reflector stage from exp08 as a callable subagent tool."""
+
+    def __init__(
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
+    ) -> None:
+        super().__init__(
+            prompt_executor=prompt_executor,
+            model_override=model_override,
+            llm_overrides=llm_overrides,
+        )
+        self.name = type(self).__name__
+        self.description = (
+            "Reflector subagent: diagnose candidate weaknesses and provide rewrites."
+        )
+        self.parameters = {
+            "type": "object",
+            "properties": {
+                "headline": {"type": "string"},
+                "word1": {"type": "string"},
+                "word2": {"type": "string"},
+                "planner_note": {"type": "string"},
+                "candidates": {"type": "string"},
+            },
+            "required": ["headline", "word1", "word2", "planner_note", "candidates"],
+            "additionalProperties": False,
+        }
+
+    def __call__(self, args):
+        headline = self._norm_arg(args.get("headline"))
+        word1 = self._norm_arg(args.get("word1"))
+        word2 = self._norm_arg(args.get("word2"))
+        planner_note = self._norm_arg(args.get("planner_note"), fallback="")
+        candidates = self._norm_arg(args.get("candidates"), fallback="")
+
+        system_prompt = (
+            "You are ReflectorSubagent in an exp08-style humor pipeline. "
+            "Diagnose what fails and produce stronger rewrites."
+        )
+        user_prompt = (
+            f"Inputs:\n{self._input_block(headline, word1, word2)}\n\n"
+            f"Planner output:\n{planner_note}\n\n"
+            f"Candidates:\n{candidates}\n\n"
+            "Tasks:\n"
+            "- Identify key failure modes (weak twist, overlap, missing anchors, etc.).\n"
+            "- Produce 2 rewrites that fix the most likely issues.\n"
+            "- Keep 1-3 sentences, no semicolons.\n\n"
+            "Output format:\n"
+            "DIAGNOSE:\n- ...\n"
+            "R1: ...\n"
+            "R2: ...\n"
+        )
+        return self._run_subagent(system_prompt, user_prompt)
+
+
+class JudgeSubagent(_BaseMwahahaSubagent):
+    """Judge stage from exp08 as a callable subagent tool."""
+
+    def __init__(
+        self,
+        prompt_executor: BasePromptExecutor,
+        model_override: str | None = None,
+        llm_overrides: dict | None = None,
+    ) -> None:
+        super().__init__(
+            prompt_executor=prompt_executor,
+            model_override=model_override,
+            llm_overrides=llm_overrides,
+        )
+        self.name = type(self).__name__
+        self.description = (
+            "Judge subagent: choose/polish the best candidate and return one final joke."
+        )
+        self.parameters = {
+            "type": "object",
+            "properties": {
+                "headline": {"type": "string"},
+                "word1": {"type": "string"},
+                "word2": {"type": "string"},
+                "candidates": {"type": "string"},
+                "rewrites": {"type": "string"},
+                "audit_feedback": {
+                    "type": "string",
+                    "description": "Optional ConstraintAudit failures to fix before finalizing.",
+                },
+            },
+            "required": [
+                "headline",
+                "word1",
+                "word2",
+                "candidates",
+                "rewrites",
+                "audit_feedback",
+            ],
+            "additionalProperties": False,
+        }
+
+    def __call__(self, args):
+        headline = self._norm_arg(args.get("headline"))
+        word1 = self._norm_arg(args.get("word1"))
+        word2 = self._norm_arg(args.get("word2"))
+        candidates = self._norm_arg(args.get("candidates"), fallback="")
+        rewrites = self._norm_arg(args.get("rewrites"), fallback="")
+        audit_feedback = self._norm_arg(args.get("audit_feedback"), fallback="")
+
+        system_prompt = (
+            "You are JudgeSubagent in an exp08-style humor pipeline. "
+            "Select or polish the best valid candidate and return only final joke text."
+        )
+        user_prompt = (
+            f"Inputs:\n{self._input_block(headline, word1, word2)}\n\n"
+            f"Candidates:\n{candidates}\n\n"
+            f"Reflector rewrites:\n{rewrites}\n\n"
+            f"ConstraintAudit feedback (if any):\n{audit_feedback}\n\n"
+            "Decision rules:\n"
+            "- Keep 1-3 sentences, no semicolons.\n"
+            "- Preserve required anchors/word constraints.\n"
+            "- Prefer strongest twist and clean landing.\n\n"
+            "Output only the final joke text.\n"
+        )
+        return self._run_subagent(system_prompt, user_prompt)
 
 
 class ConstraintAudit(BaseFunCalling):
