@@ -10,4 +10,4 @@ Logging on first data:
 
 DEFAULT_BATCH_SIZE = 100
 
-LLM_OVERRIDE_KEYS = ["model", "base_url", "temperature"]
+LLM_OVERRIDE_KEYS = ["model", "base_url", "temperature", "parallel_tool_calls"]

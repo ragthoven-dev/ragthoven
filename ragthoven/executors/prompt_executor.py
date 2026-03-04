@@ -22,6 +22,7 @@ class BasePromptExecutor(metaclass=abc.ABCMeta):
 class LiteLLMPromptExecutor(BasePromptExecutor):
     def __init__(self, config: Config = None):
         self.config = config
+        self.default_parallel_tool_calls = self.config.llm.parallel_tool_calls
         self.model_params = {
             "temperature": self.config.llm.temperature,
             "base_url": self.config.llm.base_url,
@@ -68,6 +69,16 @@ class LiteLLMPromptExecutor(BasePromptExecutor):
             for k, v in llm_overrides.items():
                 if k in LLM_OVERRIDE_KEYS:
                     model_params[k] = v
+
+        # For cross-provider compatibility (notably Claude via OpenAI-compatible
+        # endpoints), avoid parallel tool calls unless explicitly enabled.
+        if to_model_tools is not None:
+            parallel_tool_calls = model_params.get("parallel_tool_calls")
+            if parallel_tool_calls is None:
+                parallel_tool_calls = self.default_parallel_tool_calls
+            if parallel_tool_calls is None:
+                parallel_tool_calls = False
+            model_params["parallel_tool_calls"] = parallel_tool_calls
 
         model_to_use = (
             llm_overrides.get("model")

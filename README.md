@@ -383,6 +383,17 @@ llm:
     ...
 ```
 
+`llm.parallel_tool_calls` (optional) controls whether the model may request
+multiple tool calls in a single assistant turn:
+- `false` (default): execute tools one-at-a-time for cross-provider compatibility.
+- `true`: allow parallel/multi-tool call turns when your provider supports them.
+
+```yaml
+llm:
+  ...
+  parallel_tool_calls: false
+```
+
 #### Iterative tool loop
 You can let the model iteratively call tools until it converges. Enable this with the `iterative` block in your config; tools must be specified with their module prefix:
 
